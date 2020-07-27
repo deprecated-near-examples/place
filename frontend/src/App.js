@@ -13,8 +13,12 @@ const ExpectedLineLength = 4 + 8 * BoardWidth;
 const CellWidth = 16;
 const CellHeight = 16;
 const MaxNumColors = 31;
+const BatchOfPixels = 10;
+// 500 ms
+const BatchTimeout = 500;
 
 const intToColor = (c) => `#${c.toString(16).padStart(6, '0')}`;
+const transparentColor = (c, a) => `rgba(${(c >> 16) / 1}, ${((c >> 8) & 0xff) / 1}, ${(c & 0xff) / 1}, ${a})`
 const generateGamma = (hue) => {
   const gammaColors = [];
   for (let i = 0; i < MaxNumColors; ++i) {
@@ -53,7 +57,7 @@ class App extends React.Component {
       selectedCell: null,
       currentColor: 0xff0000,
       pickerColor: '#ff0000',
-      colors: ["#000000", "#666666", "#aaaaaa", "#FFFFFF", "#F44E3B", "#D33115", "#9F0500", "#FE9200", "#E27300", "#C45100", "#FCDC00", "#FCC400", "#FB9E00", "#DBDF00", "#B0BC00", "#808900", "#A4DD00", "#68BC00", "#194D33", "#68CCCA", "#16A5A5", "#0C797D", "#73D8FF", "#009CE0", "#0062B1", "#AEA1FF", "#7B64FF", "#653294", "#FDA1FF", "#FA28FF", "#AB149E"],
+      colors: ["#000000", "#666666", "#aaaaaa", "#FFFFFF", "#F44E3B", "#D33115", "#9F0500", "#FE9200", "#E27300", "#C45100", "#FCDC00", "#FCC400", "#FB9E00", "#DBDF00", "#B0BC00", "#808900", "#A4DD00", "#68BC00", "#194D33", "#68CCCA", "#16A5A5", "#0C797D", "#73D8FF", "#009CE0", "#0062B1", "#AEA1FF", "#7B64FF", "#653294", "#FDA1FF", "#FA28FF", "#AB149E"].map((c) => c.toLowerCase()),
       gammaColors: generateGamma(0),
     };
 
@@ -61,6 +65,8 @@ class App extends React.Component {
     this.canvasRef = React.createRef();
     this._context = false;
     this._lines = false;
+    this._queue = [];
+    this._pendingPixels = [];
 
     this._initNear().then(() => {
       this.setState({
@@ -99,24 +105,49 @@ class App extends React.Component {
     });
   }
 
+  async _sendQueue() {
+    const pixels = this._queue.slice(0, BatchOfPixels);
+    this._queue = this._queue.slice(BatchOfPixels);
+    this._pendingPixels = pixels;
+
+    console.log("Sending pixels", pixels);
+
+    await this._contract.draw({
+      pixels
+    });
+    await Promise.all([this.refreshBoard(), this.refreshAccountStats()]);
+    this._pendingPixels = [];
+  }
+
+  async _pingQueue(ready) {
+    if (this._sendQueueTimer) {
+      clearTimeout(this._sendQueueTimer);
+      this._sendQueueTimer = null;
+    }
+
+    if (this._pendingPixels.length === 0 && (this._queue.length >= BatchOfPixels || ready)) {
+      await this._sendQueue();
+    } else {
+      this._sendQueueTimer = setTimeout(async () => {
+        await this._pingQueue(true);
+      }, BatchTimeout);
+    }
+
+  }
+
   async drawPixel(cell) {
     if (!this.state.signedIn || !this._lines || !this._lines[cell.y]) {
       return;
     }
 
-    const oldPixel = this._lines[cell.y][cell.x];
+    this._queue.push({
+      x: cell.x,
+      y: cell.y,
+      color: this.state.currentColor,
+    });
 
-    if (oldPixel.color !== this.state.currentColor) {
-      oldPixel.pending = true
-      await this._contract.draw({
-        pixels: [{
-          x: cell.x,
-          y: cell.y,
-          color: this.state.currentColor,
-        }]
-      });
-      await Promise.all([this.refreshBoard(), this.refreshAccountStats()]);
-    }
+    await this._pingQueue(false);
+
   }
 
   async refreshAccountStats() {
@@ -217,8 +248,20 @@ class App extends React.Component {
       }
     }
 
+    this._pendingPixels.concat(this._queue).forEach((p) => {
+      ctx.fillStyle = intToColor(p.color);
+      ctx.fillRect(p.x * CellWidth, p.y * CellHeight, CellWidth, CellHeight);
+    })
+
     if (this.state.selectedCell) {
       const c = this.state.selectedCell;
+
+      ctx.fillStyle = transparentColor(this.state.currentColor, 0.2);
+      ctx.fillRect(c.x * CellWidth, 0, CellWidth, c.y * CellHeight);
+      ctx.fillRect(c.x * CellWidth, (c.y+ 1) * CellHeight, CellWidth, (BoardHeight - c.y - 1) * CellHeight);
+      ctx.fillRect(0, c.y * CellHeight, c.x * CellWidth, CellHeight);
+      ctx.fillRect( (c.x + 1) * CellWidth, c.y * CellHeight, (BoardWidth - c.x - 1) * CellWidth, CellHeight);
+
       ctx.beginPath();
       ctx.strokeStyle = intToColor(this.state.currentColor);
       ctx.rect(c.x * CellWidth, c.y * CellHeight, CellWidth, CellHeight);
