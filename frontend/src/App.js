@@ -145,9 +145,9 @@ class App extends React.Component {
   async _initNear() {
     const nearConfig = {
       networkId: 'default',
-      nodeUrl: 'https://rpc.nearprotocol.com',
+      nodeUrl: 'https://rpc.testnet.near.org',
       contractName: ContractName,
-      walletUrl: 'https://wallet.nearprotocol.com',
+      walletUrl: 'https://wallet.testnet.near.org',
     };
     const keyStore = new nearAPI.keyStores.BrowserLocalStorageKeyStore();
     const near = await nearAPI.connect(Object.assign({ deps: { keyStore } }, nearConfig));
@@ -300,7 +300,7 @@ class App extends React.Component {
           </div>
         </div>
     ) : (
-        <div>
+        <div style={{marginBottom: "10px"}}>
           <button
               className="btn btn-primary"
               onClick={() => this.requestSignIn()}>Log in with NEAR Wallet</button>
