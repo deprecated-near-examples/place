@@ -1,6 +1,6 @@
-# Meta NEAR chat
+# NEAR Place
 
-Smart contract to establish WebRTC connection between 2 users.
+Smart contract to keep track of the board.
 
 ## Building
 
@@ -13,5 +13,5 @@ Smart contract to establish WebRTC connection between 2 users.
 To test run:
 
 ```bash
-cargo test --package webrtc-chat -- --nocapture
+cargo test --package near-place -- --nocapture
 ```
