@@ -34,7 +34,7 @@ impl Account {
     pub fn touch(&mut self) {
         let block_timestamp = env::block_timestamp();
         let time_diff = block_timestamp - self.claim_timestamp;
-        self.balance += Balance::from(self.num_pixels)
+        self.balance += Balance::from(self.num_pixels + 1)
             * Balance::from(time_diff)
             * REWARD_PER_PIXEL_PER_NANOSEC;
         self.claim_timestamp = block_timestamp;
@@ -72,7 +72,7 @@ impl Place {
     }
 
     pub fn save_account(&mut self, account: &Account) {
-        if u64::from(account.account_index) > self.accounts.len() {
+        if u64::from(account.account_index) >= self.accounts.len() {
             self.account_indices
                 .insert(&account.account_id, &account.account_index);
             self.accounts.push(account);

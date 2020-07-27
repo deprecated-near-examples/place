@@ -1,13 +1,35 @@
-.local-video {
+.pixel-board {
   display: inline-block;
-  width: 640px;
+  width: 800px;
+  height: 800px;
+  border: 1px solid #eeeeee;
+}
+
+.color-picker {
+  width: 800px;
+  display: inline-block;
+  padding: 6px;
+}
+
+.circle-picker {
+  margin-top: 5px;
+}
+
+@keyframes placeHolderShimmer {
+  0% {
+    background-position: 0px 0;
+  }
+  100% {
+    background-position: 0 800px;
+  }
+}
+
+.c-animated-background {
+  animation-duration: 2s;
+  animation-fill-mode: forwards;
+  animation-iteration-count: infinite;
+  animation-name: placeHolderShimmer;
+  animation-timing-function: linear;
   background: #333;
-  transform: scaleX(-1);
+  background: linear-gradient(to bottom, #333 0%, #116611 4%, #55ff55 8%, #116611 12%, #333 16%);
 }
-
-.remote-video {
-  display: inline-block;
-  width: 640px;
-  background: #666;
-}
-
