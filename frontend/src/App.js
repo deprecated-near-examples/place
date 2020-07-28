@@ -87,8 +87,8 @@ class App extends React.Component {
     this._context = canvas.getContext('2d');
 
     canvas.addEventListener('mousemove', (e) => {
-      const x = Math.trunc(e.offsetX / CellWidth);
-      const y = Math.trunc(e.offsetY / CellHeight);
+      const x = Math.trunc(e.offsetX / e.target.clientWidth * BoardWidth);
+      const y = Math.trunc(e.offsetY / e.target.clientHeight * BoardWidth);
       let cell = null;
       if (x >= 0 && x < BoardWidth && y >= 0 && y < BoardHeight) {
         cell = { x, y };
