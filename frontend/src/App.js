@@ -115,10 +115,15 @@ class App extends React.Component {
     this._queue = this._queue.slice(BatchOfPixels);
     this._pendingPixels = pixels;
 
-    await this._contract.draw({
-      pixels
-    });
-    await Promise.all([this.refreshBoard(true), this.refreshAccountStats()]);
+    try {
+      await this._contract.draw({
+        pixels
+      });
+      await Promise.all([this.refreshBoard(true), this.refreshAccountStats()]);
+    } catch (error) {
+      console.log("Failed to send a transaction", error);
+      this._queue = this._queue.concat(this._pendingPixels);
+    }
     this._pendingPixels = [];
   }
 
