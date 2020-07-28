@@ -115,8 +115,6 @@ class App extends React.Component {
     this._queue = this._queue.slice(BatchOfPixels);
     this._pendingPixels = pixels;
 
-    console.log("Sending pixels", pixels);
-
     await this._contract.draw({
       pixels
     });
@@ -228,7 +226,7 @@ class App extends React.Component {
     let lineVersions = await this._contract.get_line_versions();
     let needLines = [];
     for (let i = 0; i < BoardHeight; ++i) {
-      if (lineVersions[i] !== this._lineVersions) {
+      if (lineVersions[i] !== this._lineVersions[i]) {
         needLines.push(i);
       }
     }
