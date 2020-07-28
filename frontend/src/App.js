@@ -152,8 +152,8 @@ class App extends React.Component {
       color: this.state.currentColor,
     });
 
+    this._stopRefreshTime = new Date().getTime() + MaxWorkTime;
     await this._pingQueue(false);
-
   }
 
   async refreshAccountStats() {
