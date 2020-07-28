@@ -16,6 +16,8 @@ const MaxNumColors = 31;
 const BatchOfPixels = 10;
 // 500 ms
 const BatchTimeout = 500;
+const RefreshBoardTimeout = 1000;
+const MaxWorkTime = 10 * 60 * 1000;
 
 const intToColor = (c) => `#${c.toString(16).padStart(6, '0')}`;
 const transparentColor = (c, a) => `rgba(${(c >> 16) / 1}, ${((c >> 8) & 0xff) / 1}, ${(c & 0xff) / 1}, ${a})`
@@ -67,6 +69,9 @@ class App extends React.Component {
     this._lines = false;
     this._queue = [];
     this._pendingPixels = [];
+    this._refreshBoardTimer = null;
+    this._sendQueueTimer = null;
+    this._stopRefreshTime = new Date().getTime() + MaxWorkTime;
 
     this._initNear().then(() => {
       this.setState({
@@ -115,7 +120,7 @@ class App extends React.Component {
     await this._contract.draw({
       pixels
     });
-    await Promise.all([this.refreshBoard(), this.refreshAccountStats()]);
+    await Promise.all([this.refreshBoard(true), this.refreshAccountStats()]);
     this._pendingPixels = [];
   }
 
@@ -127,7 +132,8 @@ class App extends React.Component {
 
     if (this._pendingPixels.length === 0 && (this._queue.length >= BatchOfPixels || ready)) {
       await this._sendQueue();
-    } else {
+    }
+    if (this._queue.length > 0) {
       this._sendQueueTimer = setTimeout(async () => {
         await this._pingQueue(true);
       }, BatchTimeout);
@@ -200,10 +206,25 @@ class App extends React.Component {
     }
     this._lineVersions = Array(BoardHeight).fill(-1);
     this._lines = Array(BoardHeight).fill(false);
-    await this.refreshBoard();
+    await this.refreshBoard(true);
   }
 
-  async refreshBoard() {
+  async refreshBoard(forced) {
+    if (this._refreshBoardTimer) {
+      clearTimeout(this._refreshBoardTimer);
+      this._refreshBoardTimer = null;
+    }
+    const t = new Date().getTime();
+    if (t < this._stopRefreshTime) {
+      this._refreshBoardTimer = setTimeout(async () => {
+        await this.refreshBoard(false);
+      }, RefreshBoardTimeout);
+    }
+
+    if (!forced && document.hidden) {
+      return;
+    }
+
     let lineVersions = await this._contract.get_line_versions();
     let needLines = [];
     for (let i = 0; i < BoardHeight; ++i) {
@@ -263,6 +284,7 @@ class App extends React.Component {
       ctx.fillRect( (c.x + 1) * CellWidth, c.y * CellHeight, (BoardWidth - c.x - 1) * CellWidth, CellHeight);
 
       ctx.beginPath();
+      ctx.fillStyle = intToColor(this.state.currentColor);
       ctx.strokeStyle = intToColor(this.state.currentColor);
       ctx.rect(c.x * CellWidth, c.y * CellHeight, CellWidth, CellHeight);
       ctx.stroke();
