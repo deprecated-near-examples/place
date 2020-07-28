@@ -61,6 +61,7 @@ class App extends React.Component {
       pickerColor: '#ff0000',
       colors: ["#000000", "#666666", "#aaaaaa", "#FFFFFF", "#F44E3B", "#D33115", "#9F0500", "#FE9200", "#E27300", "#C45100", "#FCDC00", "#FCC400", "#FB9E00", "#DBDF00", "#B0BC00", "#808900", "#A4DD00", "#68BC00", "#194D33", "#68CCCA", "#16A5A5", "#0C797D", "#73D8FF", "#009CE0", "#0062B1", "#AEA1FF", "#7B64FF", "#653294", "#FDA1FF", "#FA28FF", "#AB149E"].map((c) => c.toLowerCase()),
       gammaColors: generateGamma(0),
+      pickingColor: false,
     };
 
     this._balanceRefreshTimer = null;
@@ -104,9 +105,42 @@ class App extends React.Component {
 
     canvas.addEventListener('click', async (e) => {
       if (this.state.selectedCell !== null) {
-        this.saveColor();
-        await this.drawPixel(this.state.selectedCell);
+        if (this.state.pickingColor) {
+          this.pickColor(this.state.selectedCell);
+        } else {
+          this.saveColor();
+          await this.drawPixel(this.state.selectedCell);
+        }
       }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      e.altKey && this.setState({
+        pickingColor: true,
+      }, () => {
+        this.renderCanvas()
+      });
+    })
+    document.addEventListener('keyup', (e) => {
+      !e.altKey && this.setState({
+        pickingColor: false,
+      }, () => {
+        this.renderCanvas()
+      });
+    })
+  }
+
+  pickColor(cell) {
+    if (!this.state.signedIn || !this._lines || !this._lines[cell.y]) {
+      return;
+    }
+    const color = this._lines[cell.y][cell.x].color;
+
+    this.setState({
+      currentColor: color,
+      pickingColor: false,
+    }, () => {
+      this.renderCanvas()
     });
   }
 
@@ -279,19 +313,36 @@ class App extends React.Component {
 
     if (this.state.selectedCell) {
       const c = this.state.selectedCell;
+      if (this.state.pickingColor) {
+        const color = this._lines[c.y] ? this._lines[c.y][c.x].color : 0;
+        ctx.beginPath();
+        ctx.strokeStyle = ctx.fillStyle = transparentColor(color, 0.5);
+        ctx.lineWidth = CellWidth * 4;
+        ctx.arc((c.x + 0.5) * CellWidth, (c.y + 0.5) * CellHeight, CellWidth * 4, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.closePath();
 
-      ctx.fillStyle = transparentColor(this.state.currentColor, 0.2);
-      ctx.fillRect(c.x * CellWidth, 0, CellWidth, c.y * CellHeight);
-      ctx.fillRect(c.x * CellWidth, (c.y+ 1) * CellHeight, CellWidth, (BoardHeight - c.y - 1) * CellHeight);
-      ctx.fillRect(0, c.y * CellHeight, c.x * CellWidth, CellHeight);
-      ctx.fillRect( (c.x + 1) * CellWidth, c.y * CellHeight, (BoardWidth - c.x - 1) * CellWidth, CellHeight);
+        ctx.beginPath();
+        ctx.strokeStyle = ctx.fillStyle = transparentColor(color, 1);
+        ctx.lineWidth = CellWidth * 2;
+        ctx.arc((c.x + 0.5) * CellWidth, (c.y + 0.5) * CellHeight, CellWidth * 4, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.closePath();
+      } else {
+        ctx.fillStyle = transparentColor(this.state.currentColor, 0.2);
+        ctx.fillRect(c.x * CellWidth, 0, CellWidth, c.y * CellHeight);
+        ctx.fillRect(c.x * CellWidth, (c.y+ 1) * CellHeight, CellWidth, (BoardHeight - c.y - 1) * CellHeight);
+        ctx.fillRect(0, c.y * CellHeight, c.x * CellWidth, CellHeight);
+        ctx.fillRect( (c.x + 1) * CellWidth, c.y * CellHeight, (BoardWidth - c.x - 1) * CellWidth, CellHeight);
 
-      ctx.beginPath();
-      ctx.fillStyle = intToColor(this.state.currentColor);
-      ctx.strokeStyle = intToColor(this.state.currentColor);
-      ctx.rect(c.x * CellWidth, c.y * CellHeight, CellWidth, CellHeight);
-      ctx.stroke();
-      ctx.closePath();
+        ctx.beginPath();
+        ctx.lineWidth = 3;
+        ctx.fillStyle = intToColor(this.state.currentColor);
+        ctx.strokeStyle = intToColor(this.state.currentColor);
+        ctx.rect(c.x * CellWidth, c.y * CellHeight, CellWidth, CellHeight);
+        ctx.stroke();
+        ctx.closePath();
+      }
     }
 
     if (!this.state.boardLoaded) {
@@ -327,11 +378,13 @@ class App extends React.Component {
 
   saveColor() {
     const newColor = intToColor(this.state.currentColor);
-    if (this.state.colors.indexOf(newColor) === -1) {
-      this.setState({
-        colors: [newColor].concat(this.state.colors).slice(0, MaxNumColors)
-      });
+    const index = this.state.colors.indexOf(newColor);
+    if (index >= 0) {
+      this.state.colors.splice(index, 1);
     }
+    this.setState({
+      colors: [newColor].concat(this.state.colors).slice(0, MaxNumColors)
+    });
   }
 
   changeColor(c) {
