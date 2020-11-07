@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "version": "0.2.0",
-  "homepage": "",
+  "homepage": "https://berryclub.io",
   "private": true,
   "dependencies": {
     "@testing-library/jest-dom": "^4.2.4",
