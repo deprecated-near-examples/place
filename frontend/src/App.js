@@ -5,13 +5,20 @@ import * as nearAPI from 'near-api-js'
 import { HuePicker, GithubPicker } from 'react-color'
 
 const PixelPrice = new BN("10000000000000000000000");
-const ContractName = 'dev-1604708520705-2360364';
-const NearConfig = {
+const IsMainnet = true;
+const TestNearConfig = {
   networkId: 'testnet',
   nodeUrl: 'https://rpc.testnet.near.org',
-  contractName: ContractName,
+  contractName: 'dev-1604708520705-2360364',
   walletUrl: 'https://wallet.testnet.near.org',
 };
+const MainNearConfig = {
+  networkId: 'mainnet',
+  nodeUrl: 'https://rpc.mainnet.near.org',
+  contractName: 'berryclub.ek.near',
+  walletUrl: 'https://wallet.near.org',
+};
+const NearConfig = IsMainnet ? MainNearConfig : TestNearConfig;
 
 const BoardHeight = 50;
 const BoardWidth = 50;
@@ -262,11 +269,11 @@ class App extends React.Component {
     this._keyStore = keyStore;
     this._near = near;
 
-    this._walletConnection = new nearAPI.WalletConnection(near, ContractName);
+    this._walletConnection = new nearAPI.WalletConnection(near, NearConfig.contractName);
     this._accountId = this._walletConnection.getAccountId();
 
     this._account = this._walletConnection.account();
-    this._contract = new nearAPI.Contract(this._account, ContractName, {
+    this._contract = new nearAPI.Contract(this._account, NearConfig.contractName, {
       viewMethods: ['get_lines', 'get_line_versions', 'get_pixel_cost', 'get_account_balance', 'get_account_num_pixels', 'get_account_id_by_index'],
       changeMethods: ['draw', 'buy_tokens'],
     });
@@ -390,7 +397,7 @@ class App extends React.Component {
   async requestSignIn() {
     const appTitle = 'Berry Club';
     await this._walletConnection.requestSignIn(
-        ContractName,
+        NearConfig.contractName,
         appTitle
     )
   }
