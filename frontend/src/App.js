@@ -82,6 +82,7 @@ class App extends React.Component {
       pickingColor: false,
     };
 
+    this._numFailedTxs = 0;
     this._balanceRefreshTimer = null;
     this.canvasRef = React.createRef();
     this._context = false;
@@ -179,9 +180,17 @@ class App extends React.Component {
       await this._contract.draw({
         pixels
       }, new BN("300000000000000"));
+      this._numFailedTxs = 0;
     } catch (error) {
       console.log("Failed to send a transaction", error);
-      this._queue = this._queue.concat(this._pendingPixels);
+      this._numFailedTxs += 1;
+      if (this._numFailedTxs < 3) {
+        this._queue = this._queue.concat(this._pendingPixels);
+        this._pendingPixels = [];
+      } else {
+        this._pendingPixels = [];
+        this._queue = [];
+      }
     }
     try {
       await Promise.all([this.refreshBoard(true), this.refreshAccountStats()]);
