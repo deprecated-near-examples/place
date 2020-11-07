@@ -1,11 +1,18 @@
 import "./App.css";
 import React from 'react';
-// import BN from 'bn.js';
+import BN from 'bn.js';
 import * as nearAPI from 'near-api-js'
 import { HuePicker, GithubPicker } from 'react-color'
 
-// const OneNear = new BN("1000000000000000000000000");
-const ContractName = 'place.meta';
+const PixelPrice = new BN("10000000000000000000000");
+const ContractName = 'dev-1604708520705-2360364';
+const NearConfig = {
+  networkId: 'testnet',
+  nodeUrl: 'https://rpc.testnet.near.org',
+  contractName: ContractName,
+  walletUrl: 'https://wallet.testnet.near.org',
+};
+
 const BoardHeight = 50;
 const BoardWidth = 50;
 const NumLinesPerFetch = 10;
@@ -13,7 +20,7 @@ const ExpectedLineLength = 4 + 8 * BoardWidth;
 const CellWidth = 16;
 const CellHeight = 16;
 const MaxNumColors = 31;
-const BatchOfPixels = 10;
+const BatchOfPixels = 30;
 // 500 ms
 const BatchTimeout = 500;
 const RefreshBoardTimeout = 1000;
@@ -49,17 +56,21 @@ class App extends React.Component {
   constructor(props) {
     super(props);
 
+    const colors = ["#000000", "#666666", "#aaaaaa", "#FFFFFF", "#F44E3B", "#D33115", "#9F0500", "#FE9200", "#E27300", "#C45100", "#FCDC00", "#FCC400", "#FB9E00", "#DBDF00", "#B0BC00", "#808900", "#A4DD00", "#68BC00", "#194D33", "#68CCCA", "#16A5A5", "#0C797D", "#73D8FF", "#009CE0", "#0062B1", "#AEA1FF", "#7B64FF", "#653294", "#FDA1FF", "#FA28FF", "#AB149E"].map((c) => c.toLowerCase());
+    const currentColor = parseInt(colors[Math.floor(Math.random() * colors.length)].substring(1), 16);
+
     this.state = {
       connected: false,
       signedIn: false,
       accountId: null,
       balance: 0.0,
       numPixels: 0,
+      pendingPixels: 0,
       boardLoaded: false,
       selectedCell: null,
-      currentColor: 0xff0000,
-      pickerColor: '#ff0000',
-      colors: ["#000000", "#666666", "#aaaaaa", "#FFFFFF", "#F44E3B", "#D33115", "#9F0500", "#FE9200", "#E27300", "#C45100", "#FCDC00", "#FCC400", "#FB9E00", "#DBDF00", "#B0BC00", "#808900", "#A4DD00", "#68BC00", "#194D33", "#68CCCA", "#16A5A5", "#0C797D", "#73D8FF", "#009CE0", "#0062B1", "#AEA1FF", "#7B64FF", "#653294", "#FDA1FF", "#FA28FF", "#AB149E"].map((c) => c.toLowerCase()),
+      currentColor,
+      pickerColor: intToColor(currentColor),
+      colors,
       gammaColors: generateGamma(0),
       pickingColor: false,
     };
@@ -97,13 +108,21 @@ class App extends React.Component {
       if (JSON.stringify(cell) !== JSON.stringify(this.state.selectedCell)) {
         this.setState({
           selectedCell: cell,
-        }, () => {
+        }, async () => {
           this.renderCanvas()
+          if (this.state.selectedCell !== null && (e.buttons & 1) > 0) {
+            if (this.state.pickingColor) {
+              this.pickColor(this.state.selectedCell);
+            } else {
+              this.saveColor();
+              await this.drawPixel(this.state.selectedCell);
+            }
+          }
         })
       }
     });
 
-    canvas.addEventListener('click', async (e) => {
+    canvas.addEventListener('mousedown', async (e) => {
       if (this.state.selectedCell !== null) {
         if (this.state.pickingColor) {
           this.pickColor(this.state.selectedCell);
@@ -152,12 +171,22 @@ class App extends React.Component {
     try {
       await this._contract.draw({
         pixels
-      });
-      await Promise.all([this.refreshBoard(true), this.refreshAccountStats()]);
+      }, new BN("300000000000000"));
     } catch (error) {
       console.log("Failed to send a transaction", error);
       this._queue = this._queue.concat(this._pendingPixels);
     }
+    try {
+      await Promise.all([this.refreshBoard(true), this.refreshAccountStats()]);
+    } catch (e) {
+      // ignore
+    }
+    this._pendingPixels.forEach((p) => {
+      if (this._pending[p.y][p.x] === p.color)
+      {
+       this._pending[p.y][p.x] = -1;
+      }
+    });
     this._pendingPixels = [];
   }
 
@@ -180,6 +209,15 @@ class App extends React.Component {
 
   async drawPixel(cell) {
     if (!this.state.signedIn || !this._lines || !this._lines[cell.y]) {
+      return;
+    }
+    if (this.state.balance - this.state.pendingPixels < 1) {
+      return;
+    }
+
+    if (this._pending[cell.y][cell.x] !== this.state.currentColor && this._lines[cell.y][cell.x].color !== this.state.currentColor) {
+      this._pending[cell.y][cell.x] = this.state.currentColor;
+    } else {
       return;
     }
 
@@ -205,28 +243,23 @@ class App extends React.Component {
 
     this.setState({
       balance: balance / this._pixelCost,
+      pendingPixels: this._queue.length,
       numPixels,
     });
 
     this._balanceRefreshTimer = setInterval(() => {
       const t = new Date().getTime();
       this.setState({
-        balance: (balance + (t - startTime) * rewardPerMs) / this._pixelCost
+        balance: (balance + (t - startTime) * rewardPerMs) / this._pixelCost,
+        pendingPixels: this._pendingPixels.length + this._queue.length,
       })
     }, 100);
   }
 
   async _initNear() {
-    const nearConfig = {
-      networkId: 'default',
-      nodeUrl: 'https://rpc.testnet.near.org',
-      contractName: ContractName,
-      walletUrl: 'https://wallet.testnet.near.org',
-    };
     const keyStore = new nearAPI.keyStores.BrowserLocalStorageKeyStore();
-    const near = await nearAPI.connect(Object.assign({ deps: { keyStore } }, nearConfig));
+    const near = await nearAPI.connect(Object.assign({ deps: { keyStore } }, NearConfig));
     this._keyStore = keyStore;
-    this._nearConfig = nearConfig;
     this._near = near;
 
     this._walletConnection = new nearAPI.WalletConnection(near, ContractName);
@@ -243,6 +276,8 @@ class App extends React.Component {
     }
     this._lineVersions = Array(BoardHeight).fill(-1);
     this._lines = Array(BoardHeight).fill(false);
+    this._pending = Array(BoardHeight).fill(false);
+    this._pending.forEach((v, i, a) => a[i] = Array(BoardWidth).fill(-1));
     await this.refreshBoard(true);
   }
 
@@ -353,7 +388,7 @@ class App extends React.Component {
   }
 
   async requestSignIn() {
-    const appTitle = 'NEAR Place';
+    const appTitle = 'Berry Club';
     await this._walletConnection.requestSignIn(
         ContractName,
         appTitle
@@ -397,6 +432,11 @@ class App extends React.Component {
     })
   }
 
+  async buyTokens(amount) {
+    const requiredBalance = PixelPrice.muln(amount);
+    await this._contract.buy_tokens({}, new BN("30000000000000"), requiredBalance);
+  }
+
   render() {
     const content = !this.state.connected ? (
         <div>Connecting... <span className="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span></div>
@@ -405,16 +445,35 @@ class App extends React.Component {
           <div className="float-right">
             <button
               className="btn btn-outline-secondary"
-              onClick={() => this.logOut()}>Log out</button>
+              onClick={() => this.logOut()}>Log out ({this.state.accountId})</button>
           </div>
-          <h4>Hello, <span className="font-weight-bold">{this.state.accountId}</span>!</h4>
-          <div>
-            PIXEL tokens: {this.state.balance.toFixed(6)}
+          <div className="balances">
+            Balance: <span className="font-weight-bold">{(this.state.balance - this.state.pendingPixels).toFixed(3)}</span>
+              {'🥑 (+'}
+              <span className="font-weight-bold">{this.state.numPixels + 1}</span>
+              {'🥑/day)'}
+              {
+                (this.state.pendingPixels > 0) ? (
+                  <span> ({this.state.pendingPixels} pending)</span>
+                ) : ""
+              }
           </div>
-          <div>
-            Your pixels: {this.state.numPixels}
+          <div className="buttons">
+            <button
+              className="btn btn-primary"
+              onClick={() => this.buyTokens(10)}>Buy <span className="font-weight-bold">25🥑</span> for <span className="font-weight-bold">Ⓝ0.1</span></button>{' '}
+            <button
+              className="btn btn-primary"
+              onClick={() => this.buyTokens(40)}>Buy <span className="font-weight-bold">100🥑</span> for <span className="font-weight-bold">Ⓝ0.4</span></button>{' '}
+            <button
+              className="btn btn-primary"
+              onClick={() => this.buyTokens(100)}>Buy <span className="font-weight-bold">250🥑</span> for <span className="font-weight-bold">Ⓝ1</span></button>{' '}
+            <button
+              className="btn btn-success"
+              onClick={() => this.buyTokens(500)}>DEAL: Buy <span className="font-weight-bold">1500🥑</span> for <span className="font-weight-bold">Ⓝ5</span></button>
           </div>
           <div className="color-picker">
+            <div>Select a color to draw</div>
             <HuePicker color={ this.state.pickerColor } width="100%" disableAlpha={true} onChange={(c) => this.hueColorChange(c)}/>
             <GithubPicker className="circle-picker" colors={this.state.gammaColors} color={ this.state.pickerColor } triangle='hide' width="100%" onChangeComplete={(c) => this.changeColor(c)}/>
             <GithubPicker className="circle-picker" colors={this.state.colors} color={ this.state.pickerColor } triangle='hide' width="100%" onChangeComplete={(c) => this.hueColorChange(c)}/>
@@ -429,9 +488,10 @@ class App extends React.Component {
     ));
     return (
       <div className="px-5">
-        <h1>NEAR Place</h1>
+        <h1>🥑 Berry Club</h1>
         {content}
         <div>
+          {this.state.signedIn ? <div>Draw here - one 🥑 per pixel. Hold <span className="badge badge-secondary">ALT</span> key to pick a color from board.</div> : ""}
           <canvas ref={this.canvasRef}
                   width={800}
                   height={800}

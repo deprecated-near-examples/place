@@ -1,5 +1,5 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::{UnorderedMap, Vector};
+use near_sdk::collections::{LookupMap, Vector};
 use near_sdk::{env, near_bindgen, AccountId, Balance};
 
 pub mod account;
@@ -7,6 +7,7 @@ pub use crate::account::*;
 
 pub mod board;
 pub use crate::board::*;
+use near_sdk::json_types::{U128, U64};
 
 #[global_allocator]
 static ALLOC: near_sdk::wee_alloc::WeeAlloc<'_> = near_sdk::wee_alloc::WeeAlloc::INIT;
@@ -14,9 +15,12 @@ static ALLOC: near_sdk::wee_alloc::WeeAlloc<'_> = near_sdk::wee_alloc::WeeAlloc:
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct Place {
-    pub account_indices: UnorderedMap<AccountId, u32>,
+    pub account_indices: LookupMap<AccountId, u32>,
     pub board: board::PixelBoard,
     pub accounts: Vector<Account>,
+    pub initialization_timestamp: u64,
+    pub minted_amount: Balance,
+    pub burned_amount: Balance,
 }
 
 impl Default for Place {
@@ -31,9 +35,12 @@ impl Place {
     pub fn new() -> Self {
         assert!(!env::state_exists(), "Already initialized");
         let mut place = Self {
-            account_indices: UnorderedMap::new(b"i".to_vec()),
+            account_indices: LookupMap::new(b"i".to_vec()),
             board: PixelBoard::new(),
             accounts: Vector::new(b"a".to_vec()),
+            initialization_timestamp: env::block_timestamp(),
+            minted_amount: 0,
+            burned_amount: 0,
         };
 
         let mut account = place.get_account_by_id(env::current_account_id());
@@ -45,13 +52,33 @@ impl Place {
 
     #[payable]
     pub fn buy_tokens(&mut self) {
-        unimplemented!();
+        let mut account = self.get_account_by_id(env::predecessor_account_id());
+        let minted_amount = account.buy_tokens(env::attached_deposit());
+        self.save_account(&account);
+        self.minted_amount += minted_amount;
+    }
+
+    pub fn get_num_accounts(&self) -> u64 {
+        self.accounts.len()
+    }
+
+    pub fn get_minted_amount(&self) -> U128 {
+        self.minted_amount.into()
+    }
+
+    pub fn get_burned_amount(&self) -> U128 {
+        self.burned_amount.into()
+    }
+
+    pub fn get_initialization_timestamp(&self) -> U64 {
+        self.initialization_timestamp.into()
     }
 
     pub fn draw(&mut self, pixels: Vec<SetPixelRequest>) {
         let mut account = self.get_account_by_id(env::predecessor_account_id());
         let new_pixels = pixels.len() as u32;
-        account.charge(new_pixels);
+        let cost = account.charge(new_pixels);
+        self.burned_amount += cost;
 
         let mut old_owners = self.board.set_pixels(account.account_index, &pixels);
         let replaced_pixels = old_owners.remove(&account.account_index).unwrap_or(0);

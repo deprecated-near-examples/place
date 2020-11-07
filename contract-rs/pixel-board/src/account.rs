@@ -5,7 +5,11 @@ use near_sdk::json_types::{ValidAccountId, U128};
 use near_sdk::{env, near_bindgen, AccountId};
 
 pub const PIXEL_COST: Balance = 1_000_000_000_000_000_000;
-pub const DEFAULT_BALANCE: Balance = 100 * PIXEL_COST;
+pub const ONE_NEAR: Balance = 1_000_000_000_000_000_000_000_000;
+pub const PIXEL_TOKEN_PRICE: Balance = ONE_NEAR / PIXEL_COST / 250;
+pub const MIN_AMOUNT_FOR_DISCOUNT: Balance = 5 * ONE_NEAR;
+pub const PIXEL_TOKEN_PRICE_WITH_DISCOUNT: Balance = PIXEL_TOKEN_PRICE * 5 / 6;
+pub const DEFAULT_BALANCE: Balance = 25 * PIXEL_COST;
 /// Current reward is 1 pixel per day per pixel.
 pub const REWARD_PER_PIXEL_PER_NANOSEC: Balance = PIXEL_COST / (24 * 60 * 60 * 1_000_000_000);
 
@@ -31,6 +35,26 @@ impl Account {
         }
     }
 
+    pub fn buy_tokens(&mut self, near_amount: Balance) -> Balance {
+        let amount = if near_amount >= MIN_AMOUNT_FOR_DISCOUNT {
+            near_amount / PIXEL_TOKEN_PRICE_WITH_DISCOUNT
+        } else {
+            near_amount / PIXEL_TOKEN_PRICE
+        };
+        env::log(
+            format!(
+                "Purchased {}.{:03} PIXEL tokens for {}.{:03} NEAR",
+                amount / PIXEL_COST,
+                (amount - amount / PIXEL_COST * PIXEL_COST) / (PIXEL_COST / 1000),
+                near_amount / ONE_NEAR,
+                (near_amount - near_amount / ONE_NEAR * ONE_NEAR) / (ONE_NEAR / 1000),
+            )
+            .as_bytes(),
+        );
+        self.balance += amount;
+        amount
+    }
+
     pub fn touch(&mut self) {
         let block_timestamp = env::block_timestamp();
         let time_diff = block_timestamp - self.claim_timestamp;
@@ -40,10 +64,11 @@ impl Account {
         self.claim_timestamp = block_timestamp;
     }
 
-    pub fn charge(&mut self, num_pixels: u32) {
+    pub fn charge(&mut self, num_pixels: u32) -> Balance {
         let cost = Balance::from(num_pixels) * PIXEL_COST;
         assert!(self.balance >= cost, "Not enough balance to draw pixels");
         self.balance -= cost;
+        cost
     }
 }
 

@@ -7,10 +7,19 @@
   border: 1px solid #eeeeee;
 }
 
+.balances {
+  font-family: "Lucida Console", Monaco, monospace;
+  padding: 0.5em 0px;
+}
+
+.buttons {
+  padding: 0.5em 0px;
+}
+
 .color-picker {
   max-width: 800px;
   display: inline-block;
-  padding: 6px;
+  padding: 0.5em 0px;
 }
 
 .circle-picker {
