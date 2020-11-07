@@ -7,8 +7,15 @@
   border: 1px solid #eeeeee;
 }
 
+.account {
+  color: #333333;
+}
+
 .balances {
   font-family: "Lucida Console", Monaco, monospace;
+}
+
+.your-balance {
   padding: 0.5em 0px;
 }
 

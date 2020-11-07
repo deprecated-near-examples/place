@@ -80,8 +80,11 @@ class App extends React.Component {
       colors,
       gammaColors: generateGamma(0),
       pickingColor: false,
+      owners: [],
+      accounts: {},
     };
 
+    this._oldCounts = {};
     this._numFailedTxs = 0;
     this._balanceRefreshTimer = null;
     this.canvasRef = React.createRef();
@@ -92,6 +95,7 @@ class App extends React.Component {
     this._refreshBoardTimer = null;
     this._sendQueueTimer = null;
     this._stopRefreshTime = new Date().getTime() + MaxWorkTime;
+    this._accounts = {};
 
     this._initNear().then(() => {
       this.setState({
@@ -335,7 +339,50 @@ class App extends React.Component {
     }
 
     this._lineVersions = lineVersions;
+    this._refreshOwners();
     this.renderCanvas();
+  }
+
+  _refreshOwners() {
+    const counts = {};
+    this._lines.flat().forEach((cell) => {
+      counts[cell.ownerIndex] = (counts[cell.ownerIndex] || 0) + 1;
+    })
+    delete counts[0];
+    const sortedKeys = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+    this.setState({
+      owners: sortedKeys.map((accountIndex) => {
+        accountIndex = parseInt(accountIndex);
+        return {
+          accountIndex,
+          numPixels: counts[accountIndex],
+        }
+      })
+    })
+    sortedKeys.forEach(async (accountIndex) => {
+      accountIndex = parseInt(accountIndex);
+      if (!(accountIndex in this._accounts) || counts[accountIndex] !== (this._oldCounts[accountIndex] || 0)) {
+        try {
+          const accountId = await this._contract.get_account_id_by_index({account_index: accountIndex});
+          const accountBalance = await this._contract.get_account_balance({account_id: accountId});
+          const balance = parseFloat(accountBalance) / this._pixelCost;
+          this._accounts[accountIndex] = {
+            accountIndex,
+            accountId,
+            balance,
+          };
+        } catch (err) {
+          console.log("Failed to fetch account index #", accountIndex, err)
+        }
+        this.setState({
+          accounts: Object.assign({}, this._accounts),
+        })
+      }
+    })
+    this.setState({
+      accounts: Object.assign({}, this._accounts),
+    })
+    this._oldCounts = counts;
   }
 
   renderCanvas() {
@@ -463,16 +510,12 @@ class App extends React.Component {
               className="btn btn-outline-secondary"
               onClick={() => this.logOut()}>Log out ({this.state.accountId})</button>
           </div>
-          <div className="balances">
-            Balance: <span className="font-weight-bold">{(this.state.balance - this.state.pendingPixels).toFixed(3)}</span>
-              {'🥑 (+'}
-              <span className="font-weight-bold">{this.state.numPixels + 1}</span>
-              {'🥑/day)'}
-              {
-                (this.state.pendingPixels > 0) ? (
-                  <span> ({this.state.pendingPixels} pending)</span>
-                ) : ""
-              }
+          <div className="your-balance">
+            Balance: <Balance
+              balance={this.state.balance - this.state.pendingPixels}
+              numPixels={this.state.numPixels}
+              pendingPixels={this.state.pendingPixels}
+          />
           </div>
           <div className="buttons">
             <button
@@ -505,19 +548,83 @@ class App extends React.Component {
     return (
       <div className="px-5">
         <h1>🥑 Berry Club</h1>
-        {content}
-        <div>
-          {this.state.signedIn ? <div>Draw here - one 🥑 per pixel. Hold <span className="badge badge-secondary">ALT</span> key to pick a color from board.</div> : ""}
-          <canvas ref={this.canvasRef}
-                  width={800}
-                  height={800}
-                  className={this.state.boardLoaded ? "pixel-board" : "pixel-board c-animated-background"}>
+        <div className="container">
+          <div className="row">
+            <div className="col-lg-8">
+              {content}
+              <div>
+                {this.state.signedIn ? <div>Draw here - one 🥑 per pixel. Hold <span className="badge badge-secondary">ALT</span> key to pick a color from board.</div> : ""}
+                <canvas ref={this.canvasRef}
+                        width={800}
+                        height={800}
+                        className={this.state.boardLoaded ? "pixel-board" : "pixel-board c-animated-background"}>
 
-          </canvas>
+                </canvas>
+              </div>
+            </div>
+            <div className="col-lg-4">
+              <div>Leaderboard</div>
+              <div>
+                <Leaderboard owners={this.state.owners} accounts={this.state.accounts}/>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
+}
+
+const Balance = (props) => {
+  return (
+    <span className="balances font-small">
+      <span className="font-weight-bold">{props.balance.toFixed(3)}</span>
+      {'🥑 (+'}
+      <span className="font-weight-bold">{props.numPixels + 1}</span>
+      {'🥑/day)'}
+      {
+        props.pendingPixels ? <span> ({props.pendingPixels} pending)</span> : ""
+      }
+    </span>
+  );
+};
+
+const Leaderboard = (props) => {
+  const owners = props.owners.map((owner) => {
+    if (owner.accountIndex in props.accounts) {
+      owner.account = props.accounts[owner.accountIndex];
+    }
+    return <Owner key={owner.accountIndex} {...owner}/>
+  })
+  return (
+    <table className="table">{owners}</table>
+  );
+};
+
+const Owner = (props) => {
+  const account = props.account;
+  return (
+    <tr>
+      <td>
+        {account ? <Account accountId={account.accountId} /> : "..."}
+      </td>
+      <td className="text-nowrap">
+        <small>
+          <Balance balance={account ? account.balance : 0} numPixels={props.numPixels} />
+        </small>
+      </td>
+    </tr>
+  )
+}
+
+const Account = (props) => {
+  const accountId = props.accountId;
+  let shortAccountId = accountId
+  if (accountId.length > 6 + 6 + 3) {
+    shortAccountId = accountId.slice(0, 6) + '...' + accountId.slice(-6);
+  }
+  return <a className="account"
+            href={`https://explorer.near.org/accounts/${accountId}`}>{shortAccountId}</a>
 }
 
 export default App;
