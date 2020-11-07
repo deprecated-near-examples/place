@@ -82,6 +82,7 @@ class App extends React.Component {
       pickingColor: false,
       owners: [],
       accounts: {},
+      highlightedAccountIndex: -1,
     };
 
     this._oldCounts = {};
@@ -399,8 +400,15 @@ class App extends React.Component {
       }
       for (let j = 0; j < BoardWidth; ++j) {
         const p = line[j];
-        ctx.fillStyle = intToColor(p.color);
-        ctx.fillRect(j * CellWidth, i * CellHeight, CellWidth, CellHeight);
+        if (this.state.highlightedAccountIndex >= 0 && p.ownerIndex !== this.state.highlightedAccountIndex) {
+          ctx.fillStyle = '#000';
+          ctx.fillRect(j * CellWidth, i * CellHeight, CellWidth, CellHeight);
+          ctx.fillStyle = transparentColor(p.color, 0.2);
+          ctx.fillRect(j * CellWidth, i * CellHeight, CellWidth, CellHeight);
+        } else {
+          ctx.fillStyle = intToColor(p.color);
+          ctx.fillRect(j * CellWidth, i * CellHeight, CellWidth, CellHeight);
+        }
       }
     }
 
@@ -500,6 +508,22 @@ class App extends React.Component {
     await this._contract.buy_tokens({}, new BN("30000000000000"), requiredBalance);
   }
 
+  setHover(accountIndex, v) {
+    if (v) {
+      this.setState({
+        highlightedAccountIndex: accountIndex,
+      }, () => {
+        this.renderCanvas();
+      })
+    } else if (this.state.highlightedAccountIndex === accountIndex) {
+      this.setState({
+        highlightedAccountIndex: -1,
+      }, () => {
+        this.renderCanvas();
+      })
+    }
+  }
+
   render() {
     const content = !this.state.connected ? (
         <div>Connecting... <span className="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span></div>
@@ -565,7 +589,12 @@ class App extends React.Component {
             <div className="col-lg-4">
               <div>Leaderboard</div>
               <div>
-                <Leaderboard owners={this.state.owners} accounts={this.state.accounts}/>
+                <Leaderboard
+                  owners={this.state.owners}
+                  accounts={this.state.accounts}
+                  setHover={(accountIndex, v) => this.setHover(accountIndex, v)}
+                  highlightedAccountIndex={this.state.highlightedAccountIndex}
+                />
               </div>
             </div>
           </div>
@@ -594,17 +623,23 @@ const Leaderboard = (props) => {
     if (owner.accountIndex in props.accounts) {
       owner.account = props.accounts[owner.accountIndex];
     }
-    return <Owner key={owner.accountIndex} {...owner}/>
+    return <Owner
+      key={owner.accountIndex}
+      {...owner}
+      setHover={(v) => props.setHover(owner.accountIndex, v)}
+      isHighlighted={owner.accountIndex === props.highlightedAccountIndex}
+    />
   })
   return (
-    <table className="table">{owners}</table>
+    <table className="table table-hover"><tbody>{owners}</tbody></table>
   );
 };
 
 const Owner = (props) => {
   const account = props.account;
   return (
-    <tr>
+    <tr onMouseEnter={() => props.setHover(true)}
+        onMouseLeave={() => props.setHover(false)}>
       <td>
         {account ? <Account accountId={account.accountId} /> : "..."}
       </td>
