@@ -1,4 +1,4 @@
-import "./App.css";
+import "./App.scss";
 import React from 'react';
 // import BN from 'bn.js';
 import * as nearAPI from 'near-api-js'
@@ -20,6 +20,15 @@ const RefreshBoardTimeout = 1000;
 const MaxWorkTime = 10 * 60 * 1000;
 
 const intToColor = (c) => `#${c.toString(16).padStart(6, '0')}`;
+const int2hsv = (cInt) => {
+  cInt = intToColor(cInt).substr(1)
+  const r = parseInt(cInt.substr(0, 2), 16) / 255
+  const g = parseInt(cInt.substr(2, 2), 16) / 255
+  const b = parseInt(cInt.substr(4, 2), 16) / 255
+  let v=Math.max(r,g,b), c=v-Math.min(r,g,b);
+  let h= c && ((v==r) ? (g-b)/c : ((v==g) ? 2+(b-r)/c : 4+(r-g)/c)); 
+  return [60*(h<0?h+6:h), v&&c/v, v];
+}
 const transparentColor = (c, a) => `rgba(${(c >> 16) / 1}, ${((c >> 8) & 0xff) / 1}, ${(c & 0xff) / 1}, ${a})`
 const generateGamma = (hue) => {
   const gammaColors = [];
@@ -115,19 +124,28 @@ class App extends React.Component {
     });
 
     document.addEventListener('keydown', (e) => {
-      e.altKey && this.setState({
-        pickingColor: true,
-      }, () => {
-        this.renderCanvas()
-      });
+      e.altKey && this.enablePickColor()
     })
+
     document.addEventListener('keyup', (e) => {
-      !e.altKey && this.setState({
-        pickingColor: false,
-      }, () => {
-        this.renderCanvas()
-      });
+      !e.altKey && this.disablePickColor()
     })
+  }
+
+  enablePickColor() {
+    this.setState({
+      pickingColor: true,
+    }, () => {
+      this.renderCanvas()
+    });
+  }
+
+  disablePickColor() {
+    this.setState({
+      pickingColor: false,
+    }, () => {
+      this.renderCanvas()
+    });
   }
 
   pickColor(cell) {
@@ -136,8 +154,12 @@ class App extends React.Component {
     }
     const color = this._lines[cell.y][cell.x].color;
 
+    console.log(int2hsv(color))
+
     this.setState({
       currentColor: color,
+      pickerColor: intToColor(color),
+      gammaColors: generateGamma(int2hsv(color)[0]),
       pickingColor: false,
     }, () => {
       this.renderCanvas()
@@ -370,6 +392,7 @@ class App extends React.Component {
   }
 
   hueColorChange(c) {
+    console.log(c)
     this.setState({
       gammaColors: generateGamma(c.hsl.h)
     })
@@ -398,24 +421,30 @@ class App extends React.Component {
   }
 
   render() {
+
     const content = !this.state.connected ? (
         <div>Connecting... <span className="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span></div>
     ) : (this.state.signedIn ? (
         <div>
-          <div className="float-right">
-            <button
-              className="btn btn-outline-secondary"
-              onClick={() => this.logOut()}>Log out</button>
-          </div>
-          <h4>Hello, <span className="font-weight-bold">{this.state.accountId}</span>!</h4>
-          <div>
-            PIXEL tokens: {this.state.balance.toFixed(6)}
-          </div>
-          <div>
-            Your pixels: {this.state.numPixels}
+          <div className="hud">
+            <div>
+              <button
+                className="btn btn-outline-secondary"
+                onClick={() => this.logOut()}>Log out</button>
+              <button
+                className="btn btn-outline-secondary"
+                onClick={() => this.state.pickingColor ? this.disablePickColor() : this.enablePickColor() }>{ this.state.pickingColor ? 'Cancel' : 'Pick Color'}</button>
+            </div>
+            <p>{this.state.accountId}</p>
+            <p>
+              PIXEL tokens: {this.state.balance.toFixed(6)}
+            </p>
+            <p>
+              Your pixels: {this.state.numPixels}
+            </p>
           </div>
           <div className="color-picker">
-            <HuePicker color={ this.state.pickerColor } width="100%" disableAlpha={true} onChange={(c) => this.hueColorChange(c)}/>
+            <HuePicker color={ this.state.pickerColor } width="100%" disableAlpha={true} onChangeComplete={(c) => this.hueColorChange(c)}/>
             <GithubPicker className="circle-picker" colors={this.state.gammaColors} color={ this.state.pickerColor } triangle='hide' width="100%" onChangeComplete={(c) => this.changeColor(c)}/>
             <GithubPicker className="circle-picker" colors={this.state.colors} color={ this.state.pickerColor } triangle='hide' width="100%" onChangeComplete={(c) => this.hueColorChange(c)}/>
           </div>
@@ -428,9 +457,13 @@ class App extends React.Component {
         </div>
     ));
     return (
-      <div className="px-5">
-        <h1>NEAR Place</h1>
-        {content}
+      <div className="container">
+        <div>
+          <h2>🍒 Berryclub.io Place 🥑</h2>
+        </div>
+        <div>
+          {content}
+        </div>
         <div>
           <canvas ref={this.canvasRef}
                   width={800}
