@@ -1,4 +1,7 @@
 
+* {
+  box-sizing: border-box;
+}
 h2 {
   margin: 16px 0;
 }
@@ -16,19 +19,18 @@ button {
 
 .container {
   padding: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.leaderboard {
+  max-width: 400px;
 }
 
 .row {
   display: flex;
   justify-content: center;
-  align-items: flex-start;
-  div {
-    box-sizing: border-box;
-  }
-  > div {
-    margin: 0 auto;
-    width: 100%;
-  }
+  width: 100%;
   > div:not(:first-child) {
     padding-left: 16px;
   }
@@ -52,8 +54,8 @@ Layout For Tablet / Phone
   .row {
     flex-direction: column;
     max-width: 800px;
-    > div {
-      padding-left: 0;
+    div {
+      padding-left: 0 !important;
     }
   }
 }

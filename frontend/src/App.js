@@ -565,8 +565,6 @@ class App extends React.Component {
               pendingPixels={this.state.pendingPixels}
           />
           </div>
-
-
           <div className="buttons">
             <button
               className="btn btn-primary"
@@ -613,7 +611,7 @@ class App extends React.Component {
                 </canvas>
               </div>
             </div>
-            <div>
+            <div className="leaderboard">
               <h2>Leaderboard</h2>
               <div>
                 <Leaderboard
