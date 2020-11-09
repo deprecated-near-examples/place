@@ -5,7 +5,7 @@ import * as nearAPI from 'near-api-js'
 import { HuePicker, GithubPicker } from 'react-color'
 
 const PixelPrice = new BN("10000000000000000000000");
-const IsMainnet = false;
+const IsMainnet = true;
 const TestNearConfig = {
   networkId: 'testnet',
   nodeUrl: 'https://rpc.testnet.near.org',
