@@ -631,7 +631,7 @@ const Leaderboard = (props) => {
     />
   })
   return (
-    <table className="table table-hover"><tbody>{owners}</tbody></table>
+    <table className="table table-hover table-sm"><tbody>{owners}</tbody></table>
   );
 };
 
