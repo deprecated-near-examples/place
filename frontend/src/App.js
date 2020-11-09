@@ -566,24 +566,6 @@ class App extends React.Component {
           />
           </div>
 
-          <div className="hud">
-            <div>
-              <button
-                className="btn btn-outline-secondary"
-                onClick={() => this.logOut()}>Log out</button>
-              <button
-                className="btn btn-outline-secondary"
-                onClick={() => this.state.pickingColor ? this.disablePickColor() : this.enablePickColor() }>{ this.state.pickingColor ? 'Cancel' : 'Pick Color'}</button>
-            </div>
-            <p>{this.state.accountId}</p>
-            <p>
-              PIXEL tokens: {this.state.balance.toFixed(6)}
-            </p>
-            <p>
-              Your pixels: {this.state.numPixels}
-            </p>
-          </div>
-
 
           <div className="buttons">
             <button
@@ -600,7 +582,9 @@ class App extends React.Component {
               onClick={() => this.buyTokens(500)}>DEAL: Buy <span className="font-weight-bold">1500🥑</span> for <span className="font-weight-bold">Ⓝ5</span></button>
           </div>
           <div className="color-picker">
-            <div>Select a color to draw</div>
+            <button
+                className="btn btn-outline-secondary"
+                onClick={() => this.state.pickingColor ? this.disablePickColor() : this.enablePickColor() }>{ this.state.pickingColor ? 'Cancel' : 'Color Picker'}</button>
             <HuePicker color={ this.state.pickerColor } width="100%" disableAlpha={true} onChange={(c) => this.hueColorChange(c)}/>
             <GithubPicker className="circle-picker" colors={this.state.gammaColors} color={ this.state.pickerColor } triangle='hide' width="100%" onChangeComplete={(c) => this.changeColor(c)}/>
             <GithubPicker className="circle-picker" colors={this.state.colors} color={ this.state.pickerColor } triangle='hide' width="100%" onChangeComplete={(c) => this.hueColorChange(c)}/>
@@ -614,29 +598,10 @@ class App extends React.Component {
         </div>
     ));
     return (
-
-
-      // <div className="container">
-      //   <div>
-      //     <h2>🍒 Berryclub.io Place 🥑</h2>
-      //   </div>
-      //   <div>
-      //     {content}
-      //   </div>
-      //   <div>
-      //     <canvas ref={this.canvasRef}
-      //             width={800}
-      //             height={800}
-      //             className={this.state.boardLoaded ? "pixel-board" : "pixel-board c-animated-background"}>
-
-      //     </canvas>
-
-          
-      <div className="px-5">
-        <h1>🥑 Berry Club</h1>
         <div className="container">
           <div className="row">
-            <div className="col-lg-8">
+            <div>
+              <h2>🥑 Berry Club</h2>
               {content}
               <div>
                 {this.state.signedIn ? <div>Draw here - one 🥑 per pixel. Hold <span className="badge badge-secondary">ALT</span> key to pick a color from board.</div> : ""}
@@ -648,8 +613,8 @@ class App extends React.Component {
                 </canvas>
               </div>
             </div>
-            <div className="col-lg-4">
-              <div>Leaderboard</div>
+            <div>
+              <h2>Leaderboard</h2>
               <div>
                 <Leaderboard
                   owners={this.state.owners}
@@ -661,7 +626,6 @@ class App extends React.Component {
             </div>
           </div>
         </div>
-      </div>
     );
   }
 }
