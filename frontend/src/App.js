@@ -94,6 +94,7 @@ class App extends React.Component {
       owners: [],
       accounts: {},
       highlightedAccountIndex: -1,
+      selectedOwnerIndex: false,
     };
 
     this._buttonDown = false;
@@ -146,6 +147,7 @@ class App extends React.Component {
       if (JSON.stringify(cell) !== JSON.stringify(this.state.selectedCell)) {
         this.setState({
           selectedCell: cell,
+          selectedOwnerIndex: this._lines && cell && this._lines[cell.y] && this._lines[cell.y][cell.x].ownerIndex
         }, async () => {
           this.renderCanvas()
           if (this.state.selectedCell !== null && this._buttonDown) {
@@ -465,11 +467,25 @@ class App extends React.Component {
       }
       for (let j = 0; j < BoardWidth; ++j) {
         const p = line[j];
-        if (this.state.highlightedAccountIndex >= 0 && p.ownerIndex !== this.state.highlightedAccountIndex) {
-          ctx.fillStyle = '#000';
-          ctx.fillRect(j * CellWidth, i * CellHeight, CellWidth, CellHeight);
-          ctx.fillStyle = transparentColor(p.color, 0.2);
-          ctx.fillRect(j * CellWidth, i * CellHeight, CellWidth, CellHeight);
+        if (this.state.highlightedAccountIndex >= 0) {
+          if (p.ownerIndex !== this.state.highlightedAccountIndex) {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(j * CellWidth, i * CellHeight, CellWidth, CellHeight);
+            ctx.fillStyle = transparentColor(p.color, 0.2);
+            ctx.fillRect(j * CellWidth, i * CellHeight, CellWidth, CellHeight);
+            ctx.beginPath();
+            ctx.strokeStyle = ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = 0.5;
+            ctx.moveTo(j * CellWidth, i * CellHeight);
+            ctx.lineTo((j + 1) * CellWidth, (i + 1) * CellHeight);
+            ctx.moveTo((j + 1) * CellWidth, i * CellHeight);
+            ctx.lineTo((j) * CellWidth, (i + 1) * CellHeight);
+            ctx.stroke();
+            ctx.closePath();
+          } else {
+            ctx.fillStyle = intToColor(p.color);
+            ctx.fillRect(j * CellWidth, i * CellHeight, CellWidth, CellHeight);
+          }
         } else {
           ctx.fillStyle = intToColor(p.color);
           ctx.fillRect(j * CellWidth, i * CellHeight, CellWidth, CellHeight);
@@ -664,6 +680,7 @@ class App extends React.Component {
                   owners={this.state.owners}
                   accounts={this.state.accounts}
                   setHover={(accountIndex, v) => this.setHover(accountIndex, v)}
+                  selectedOwnerIndex={this.state.selectedOwnerIndex}
                   highlightedAccountIndex={this.state.highlightedAccountIndex}
                 />
               </div>
@@ -696,6 +713,7 @@ const Leaderboard = (props) => {
     return <Owner
       key={owner.accountIndex}
       {...owner}
+      isSelected={owner.accountIndex === props.selectedOwnerIndex}
       setHover={(v) => props.setHover(owner.accountIndex, v)}
       isHighlighted={owner.accountIndex === props.highlightedAccountIndex}
     />
@@ -709,7 +727,8 @@ const Owner = (props) => {
   const account = props.account;
   return (
     <tr onMouseEnter={() => props.setHover(true)}
-        onMouseLeave={() => props.setHover(false)}>
+        onMouseLeave={() => props.setHover(false)}
+        className={props.isSelected ? "selected" : ""}>
       <td>
         {account ? <Account accountId={account.accountId} /> : "..."}
       </td>
