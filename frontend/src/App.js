@@ -5,7 +5,7 @@ import * as nearAPI from 'near-api-js'
 import { HuePicker, GithubPicker } from 'react-color'
 
 const PixelPrice = new BN("10000000000000000000000");
-const IsMainnet = true;
+const IsMainnet = false;
 const TestNearConfig = {
   networkId: 'testnet',
   nodeUrl: 'https://rpc.testnet.near.org',
@@ -19,6 +19,8 @@ const MainNearConfig = {
   walletUrl: 'https://wallet.near.org',
 };
 const NearConfig = IsMainnet ? MainNearConfig : TestNearConfig;
+
+const Avacado = <span role="img" aria-label="avacado">🥑</span>;
 
 const BoardHeight = 50;
 const BoardWidth = 50;
@@ -40,7 +42,7 @@ const int2hsv = (cInt) => {
   const g = parseInt(cInt.substr(2, 2), 16) / 255
   const b = parseInt(cInt.substr(4, 2), 16) / 255
   let v=Math.max(r,g,b), c=v-Math.min(r,g,b);
-  let h= c && ((v==r) ? (g-b)/c : ((v==g) ? 2+(b-r)/c : 4+(r-g)/c)); 
+  let h= c && ((v===r) ? (g-b)/c : ((v===g) ? 2+(b-r)/c : 4+(r-g)/c));
   return [60*(h<0?h+6:h), v&&c/v, v];
 }
 const transparentColor = (c, a) => `rgba(${(c >> 16) / 1}, ${((c >> 8) & 0xff) / 1}, ${(c & 0xff) / 1}, ${a})`
@@ -94,6 +96,7 @@ class App extends React.Component {
       highlightedAccountIndex: -1,
     };
 
+    this._buttonDown = false;
     this._oldCounts = {};
     this._numFailedTxs = 0;
     this._balanceRefreshTimer = null;
@@ -120,9 +123,22 @@ class App extends React.Component {
     const canvas = this.canvasRef.current;
     this._context = canvas.getContext('2d');
 
-    canvas.addEventListener('mousemove', (e) => {
-      const x = Math.trunc(e.offsetX / e.target.clientWidth * BoardWidth);
-      const y = Math.trunc(e.offsetY / e.target.clientHeight * BoardWidth);
+    const mouseMove = (e) => {
+      let x, y;
+      if ('touches' in e) {
+        if (e.touches.length > 1) {
+          return true;
+        } else {
+          const rect = e.target.getBoundingClientRect();
+          x = e.targetTouches[0].clientX - rect.left;
+          y = e.targetTouches[0].clientY - rect.top;
+        }
+      } else {
+        x = e.offsetX;
+        y = e.offsetY;
+      }
+      x = Math.trunc(x / e.target.clientWidth * BoardWidth);
+      y = Math.trunc(y / e.target.clientHeight * BoardWidth);
       let cell = null;
       if (x >= 0 && x < BoardWidth && y >= 0 && y < BoardHeight) {
         cell = { x, y };
@@ -132,7 +148,7 @@ class App extends React.Component {
           selectedCell: cell,
         }, async () => {
           this.renderCanvas()
-          if (this.state.selectedCell !== null && (e.buttons & 1) > 0) {
+          if (this.state.selectedCell !== null && this._buttonDown) {
             if (this.state.pickingColor) {
               this.pickColor(this.state.selectedCell);
             } else {
@@ -142,9 +158,15 @@ class App extends React.Component {
           }
         })
       }
-    });
+      e.preventDefault();
+      return false;
+    };
 
-    canvas.addEventListener('mousedown', async (e) => {
+    canvas.addEventListener('mousemove', mouseMove);
+    canvas.addEventListener('touchmove', mouseMove);
+
+    const mouseDown = async (e) => {
+      this._buttonDown = true;
       if (this.state.selectedCell !== null) {
         if (this.state.pickingColor) {
           this.pickColor(this.state.selectedCell);
@@ -153,7 +175,28 @@ class App extends React.Component {
           await this.drawPixel(this.state.selectedCell);
         }
       }
-    });
+    };
+
+    canvas.addEventListener('mousedown', mouseDown);
+    canvas.addEventListener('touchstart', mouseDown);
+
+    const unselectCell = () => {
+      this.setState({
+        selectedCell: null,
+      }, () => this.renderCanvas());
+    }
+
+    const mouseUp = async (e) => {
+      this._buttonDown = false;
+      if ('touches' in e) {
+        unselectCell();
+      }
+    }
+
+    canvas.addEventListener('mouseup', mouseUp);
+    canvas.addEventListener('touchend', mouseUp);
+
+    canvas.addEventListener('mouseleave', unselectCell);
 
     document.addEventListener('keydown', (e) => {
       e.altKey && this.enablePickColor()
@@ -568,21 +611,18 @@ class App extends React.Component {
           <div className="buttons">
             <button
               className="btn btn-primary"
-              onClick={() => this.buyTokens(10)}>Buy <span className="font-weight-bold">25🥑</span> for <span className="font-weight-bold">Ⓝ0.1</span></button>{' '}
+              onClick={() => this.buyTokens(10)}>Buy <span className="font-weight-bold">25{Avacado}</span> for <span className="font-weight-bold">Ⓝ0.1</span></button>{' '}
             <button
               className="btn btn-primary"
-              onClick={() => this.buyTokens(40)}>Buy <span className="font-weight-bold">100🥑</span> for <span className="font-weight-bold">Ⓝ0.4</span></button>{' '}
+              onClick={() => this.buyTokens(40)}>Buy <span className="font-weight-bold">100{Avacado}</span> for <span className="font-weight-bold">Ⓝ0.4</span></button>{' '}
             <button
               className="btn btn-primary"
-              onClick={() => this.buyTokens(100)}>Buy <span className="font-weight-bold">250🥑</span> for <span className="font-weight-bold">Ⓝ1</span></button>{' '}
+              onClick={() => this.buyTokens(100)}>Buy <span className="font-weight-bold">250{Avacado}</span> for <span className="font-weight-bold">Ⓝ1</span></button>{' '}
             <button
               className="btn btn-success"
-              onClick={() => this.buyTokens(500)}>DEAL: Buy <span className="font-weight-bold">1500🥑</span> for <span className="font-weight-bold">Ⓝ5</span></button>
+              onClick={() => this.buyTokens(500)}>DEAL: Buy <span className="font-weight-bold">1500{Avacado}</span> for <span className="font-weight-bold">Ⓝ5</span></button>
           </div>
           <div className="color-picker">
-            <button
-                className="btn btn-outline-secondary"
-                onClick={() => this.state.pickingColor ? this.disablePickColor() : this.enablePickColor() }>{ this.state.pickingColor ? 'Cancel' : 'Color Picker'}</button>
             <HuePicker color={ this.state.pickerColor } width="100%" disableAlpha={true} onChange={(c) => this.hueColorChange(c)}/>
             <GithubPicker className="circle-picker" colors={this.state.gammaColors} color={ this.state.pickerColor } triangle='hide' width="100%" onChangeComplete={(c) => this.changeColor(c)}/>
             <GithubPicker className="circle-picker" colors={this.state.colors} color={ this.state.pickerColor } triangle='hide' width="100%" onChangeComplete={(c) => this.hueColorChange(c)}/>
@@ -599,10 +639,16 @@ class App extends React.Component {
         <div className="container">
           <div className="row">
             <div>
-              <h2>🥑 Berry Club</h2>
+              <h2>{Avacado} Berry Club</h2>
               {content}
               <div>
-                {this.state.signedIn ? <div>Draw here - one 🥑 per pixel. Hold <span className="badge badge-secondary">ALT</span> key to pick a color from board.</div> : ""}
+                {this.state.signedIn ? (<div>
+                  Draw here - one {Avacado} per pixel. Hold <span className="badge badge-secondary">ALT</span> key to pick a color from board.{' '}
+                  <button
+                    className="btn btn-outline-secondary"
+                    onClick={() => this.state.pickingColor ? this.disablePickColor() : this.enablePickColor() }>{ this.state.pickingColor ? 'Cancel' : 'Color Picker'}
+                  </button>
+                </div>) : ""}
                 <canvas ref={this.canvasRef}
                         width={800}
                         height={800}
@@ -632,9 +678,9 @@ const Balance = (props) => {
   return (
     <span className="balances font-small">
       <span className="font-weight-bold">{props.balance.toFixed(3)}</span>
-      {'🥑 (+'}
+      {Avacado}{' (+'}
       <span className="font-weight-bold">{props.numPixels + 1}</span>
-      {'🥑/day)'}
+      {Avacado}{'/day)'}
       {
         props.pendingPixels ? <span> ({props.pendingPixels} pending)</span> : ""
       }

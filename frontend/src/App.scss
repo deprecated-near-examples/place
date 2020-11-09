@@ -6,6 +6,14 @@ h2 {
   margin: 16px 0;
 }
 
+.balances {
+  font-family: "Lucida Console",Monaco,monospace;
+}
+
+.font-weight-bold {
+  font-weight: bold;
+}
+
 button {
   border: 2px solid #0072CE;
   padding: 8px;
@@ -15,12 +23,20 @@ button {
   border-radius: 16px;
   margin-right: 16px;
   line-height: 12px;
+  cursor: pointer;
   &:hover {
-    background: #ddd;
+    background: #ccddff;
   }
   &:active {
     color: white;
     background: #0072CE;
+  }
+}
+
+.btn-success {
+  border: 2px solid #00CE33;
+  &:hover {
+    background: #7e7;
   }
 }
 
