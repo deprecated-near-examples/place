@@ -184,7 +184,7 @@ class App extends React.Component {
     try {
       await this._contract.draw({
         pixels
-      }, new BN("300000000000000"));
+      }, new BN("75000000000000"));
       this._numFailedTxs = 0;
     } catch (error) {
       console.log("Failed to send a transaction", error);
