@@ -20,7 +20,7 @@ const MainNearConfig = {
 };
 const NearConfig = IsMainnet ? MainNearConfig : TestNearConfig;
 
-const Avacado = <span role="img" aria-label="avacado">🥑</span>;
+const Avocado = <span role="img" aria-label="avocado">🥑</span>;
 
 const BoardHeight = 50;
 const BoardWidth = 50;
@@ -199,6 +199,14 @@ class App extends React.Component {
     canvas.addEventListener('touchend', mouseUp);
 
     canvas.addEventListener('mouseleave', unselectCell);
+
+    canvas.addEventListener('mouseenter', (e) => {
+      if (this._buttonDown) {
+        if (!('touches' in e) && !(e.buttons & 1)) {
+          this._buttonDown = false;
+        }
+      }
+    });
 
     document.addEventListener('keydown', (e) => {
       e.altKey && this.enablePickColor()
@@ -633,16 +641,16 @@ class App extends React.Component {
           <div className="buttons">
             <button
               className="btn btn-primary"
-              onClick={() => this.buyTokens(10)}>Buy <span className="font-weight-bold">25{Avacado}</span> for <span className="font-weight-bold">Ⓝ0.1</span></button>{' '}
+              onClick={() => this.buyTokens(10)}>Buy <span className="font-weight-bold">25{Avocado}</span> for <span className="font-weight-bold">Ⓝ0.1</span></button>{' '}
             <button
               className="btn btn-primary"
-              onClick={() => this.buyTokens(40)}>Buy <span className="font-weight-bold">100{Avacado}</span> for <span className="font-weight-bold">Ⓝ0.4</span></button>{' '}
+              onClick={() => this.buyTokens(40)}>Buy <span className="font-weight-bold">100{Avocado}</span> for <span className="font-weight-bold">Ⓝ0.4</span></button>{' '}
             <button
               className="btn btn-primary"
-              onClick={() => this.buyTokens(100)}>Buy <span className="font-weight-bold">250{Avacado}</span> for <span className="font-weight-bold">Ⓝ1</span></button>{' '}
+              onClick={() => this.buyTokens(100)}>Buy <span className="font-weight-bold">250{Avocado}</span> for <span className="font-weight-bold">Ⓝ1</span></button>{' '}
             <button
               className="btn btn-success"
-              onClick={() => this.buyTokens(500)}>DEAL: Buy <span className="font-weight-bold">1500{Avacado}</span> for <span className="font-weight-bold">Ⓝ5</span></button>
+              onClick={() => this.buyTokens(500)}>DEAL: Buy <span className="font-weight-bold">1500{Avocado}</span> for <span className="font-weight-bold">Ⓝ5</span></button>
           </div>
           <div className="color-picker">
             <HuePicker color={ this.state.pickerColor } width="100%" disableAlpha={true} onChange={(c) => this.hueColorChange(c)}/>
@@ -661,11 +669,11 @@ class App extends React.Component {
         <div className="container">
           <div className="row">
             <div>
-              <h2>{Avacado} Berry Club</h2>
+              <h2>{Avocado} Berry Club</h2>
               {content}
               <div>
                 {this.state.signedIn ? (<div>
-                  Draw here - one {Avacado} per pixel. Hold <span className="badge badge-secondary">ALT</span> key to pick a color from board.{' '}
+                  Draw here - one {Avocado} per pixel. Hold <span className="badge badge-secondary">ALT</span> key to pick a color from board.{' '}
                   <button
                     className="btn btn-outline-secondary"
                     onClick={() => this.state.pickingColor ? this.disablePickColor() : this.enablePickColor() }>{ this.state.pickingColor ? 'Cancel' : 'Color Picker'}
@@ -701,9 +709,9 @@ const Balance = (props) => {
   return (
     <span className="balances font-small">
       <span className="font-weight-bold">{props.balance.toFixed(3)}</span>
-      {Avacado}{' (+'}
+      {Avocado}{' (+'}
       <span className="font-weight-bold">{props.numPixels + 1}</span>
-      {Avacado}{'/day)'}
+      {Avocado}{'/day)'}
       {
         props.pendingPixels ? <span> ({props.pendingPixels} pending)</span> : ""
       }
