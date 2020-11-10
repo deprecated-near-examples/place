@@ -485,6 +485,12 @@ class App extends React.Component {
           } else {
             ctx.fillStyle = intToColor(p.color);
             ctx.fillRect(j * CellWidth, i * CellHeight, CellWidth, CellHeight);
+            ctx.beginPath();
+            ctx.strokeStyle = ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.lineWidth = 0.5;
+            ctx.rect(j * CellWidth + 0.5, i * CellHeight + 0.5, CellWidth - 1, CellHeight - 1);
+            ctx.stroke();
+            ctx.closePath();
           }
         } else {
           ctx.fillStyle = intToColor(p.color);
