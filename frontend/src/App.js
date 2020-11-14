@@ -21,8 +21,8 @@ const MainNearConfig = {
 };
 const NearConfig = IsMainnet ? MainNearConfig : TestNearConfig;
 
-const Avocado = <span role="img" aria-label="avocado">🥑</span>;
-const Banana = <span role="img" aria-label="banana">🍌</span>;
+const Avocado = <span role="img" aria-label="avocado" className="berry">🥑</span>;
+const Banana = <span role="img" aria-label="banana" className="berry">🍌</span>;
 
 const Berry = {
   Avocado: 'Avocado',
@@ -735,7 +735,7 @@ class App extends React.Component {
         <div className="container">
           <div className="row">
             <div>
-              <h2>{Avocado} Berry Club</h2>
+              <h2>{Avocado} Berry Club {Banana}</h2>
               {content}
               <div>
                 {this.state.signedIn ? (<div>
