@@ -843,7 +843,7 @@ const Account = (props) => {
     (accountId.slice(0, 6) + '...' + accountId.slice(-6)) :
     accountId;
   return <a className="account"
-            href={`https://explorer.near.org/accounts/${accountId}`}>{shortAccountId}</a>
+            href={`https://wayback.berryclub.io/${accountId}`}>{shortAccountId}</a>
 }
 
 export default App;
