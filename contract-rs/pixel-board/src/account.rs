@@ -210,7 +210,7 @@ impl Place {
         PIXEL_COST.into()
     }
 
-    pub fn get_account_by_index2(&self, account_index: AccountIndex) -> Option<HumanAccount> {
+    pub fn get_account_by_index(&self, account_index: AccountIndex) -> Option<HumanAccount> {
         self.get_internal_account_by_index(account_index)
             .map(|mut account| {
                 account.touch();

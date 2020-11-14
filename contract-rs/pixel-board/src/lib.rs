@@ -105,7 +105,8 @@ impl Place {
     }
 
     pub fn register_account(&mut self) {
-        self.save_account(self.get_mut_account(env::predecessor_account_id()));
+        let account = self.get_mut_account(env::predecessor_account_id());
+        self.save_account(account);
     }
 
     #[payable]

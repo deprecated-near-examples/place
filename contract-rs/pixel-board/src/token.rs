@@ -97,6 +97,9 @@ trait VaultFungibleToken {
     ) -> Promise;
     fn withdraw_from_vault(&mut self, vault_id: VaultId, receiver_id: ValidAccountId, amount: U128);
     fn resolve_vault(&mut self, vault_id: VaultId, sender_id: AccountId) -> U128;
+
+    fn get_total_supply(&self) -> U128;
+    fn get_balance(&self, account_id: ValidAccountId) -> U128;
 }
 
 #[near_bindgen]
@@ -189,6 +192,20 @@ impl VaultFungibleToken for Place {
 
         vault.balance.into()
     }
+
+    fn get_total_supply(&self) -> U128 {
+        self.farmed_balances[Berry::Banana as usize].into()
+    }
+
+    fn get_balance(&self, account_id: ValidAccountId) -> U128 {
+        self.get_internal_account_by_id(account_id.as_ref())
+            .map(|mut account| {
+                account.touch();
+                account.balances[Berry::Banana as usize]
+            })
+            .unwrap_or(0)
+            .into()
+    }
 }
 
 impl Place {
@@ -207,13 +224,13 @@ impl Place {
         let mut account = self.get_mut_account(sender_id.clone());
 
         // Checking and updating the balance
-        if account.banana_balance < amount {
+        if account.balances[Berry::Banana as usize] < amount {
             env::panic(b"Not enough banana balance");
         }
-        account.banana_balance -= amount;
+        account.balances[Berry::Banana as usize] -= amount;
 
         // Saving the account back to the state.
-        self.set_account(&account);
+        self.save_account(account);
 
         sender_id
     }
@@ -229,9 +246,9 @@ impl Place {
             .expect("Receiver account doesn't exist");
         self.touch(&mut account);
 
-        account.banana_balance += amount;
+        account.balances[Berry::Banana as usize] += amount;
         // Saving the account back to the state.
-        self.set_account(&account);
+        self.save_account(account);
     }
 }
 
