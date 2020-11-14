@@ -3,9 +3,10 @@ import React from 'react';
 import BN from 'bn.js';
 import * as nearAPI from 'near-api-js'
 import { HuePicker, GithubPicker } from 'react-color'
+import Switch from "react-switch"
 
 const PixelPrice = new BN("10000000000000000000000");
-const IsMainnet = true;
+const IsMainnet = false;
 const TestNearConfig = {
   networkId: 'testnet',
   nodeUrl: 'https://rpc.testnet.near.org',
@@ -21,6 +22,12 @@ const MainNearConfig = {
 const NearConfig = IsMainnet ? MainNearConfig : TestNearConfig;
 
 const Avocado = <span role="img" aria-label="avocado">🥑</span>;
+const Banana = <span role="img" aria-label="banana">🍌</span>;
+
+const Berry = {
+  Avocado: 'Avocado',
+  Banana: 'Banana',
+};
 
 const BoardHeight = 50;
 const BoardWidth = 50;
@@ -81,8 +88,6 @@ class App extends React.Component {
       connected: false,
       signedIn: false,
       accountId: null,
-      balance: 0.0,
-      numPixels: 0,
       pendingPixels: 0,
       boardLoaded: false,
       selectedCell: null,
@@ -95,6 +100,7 @@ class App extends React.Component {
       accounts: {},
       highlightedAccountIndex: -1,
       selectedOwnerIndex: false,
+      farmingBanana: false,
     };
 
     this._buttonDown = false;
@@ -307,7 +313,8 @@ class App extends React.Component {
     if (!this.state.signedIn || !this._lines || !this._lines[cell.y]) {
       return;
     }
-    if (this.state.balance - this.state.pendingPixels < 1) {
+    const balance = this.state.account ? this.state.account.avocadoBalance : 0;
+    if (balance - this.state.pendingPixels < 1) {
       return;
     }
 
@@ -327,28 +334,70 @@ class App extends React.Component {
     await this._pingQueue(false);
   }
 
+  parseAccount(account, accountId) {
+    if (!account) {
+      account = {
+        accountId,
+        accountIndex: -1,
+        avocadoBalance: 25.0,
+        bananaBalance: 0.0,
+        numPixels: 0,
+        farmingPreference: Berry.Avocado,
+      }
+    } else {
+      account = {
+        accountId: account.account_id,
+        accountIndex: account.account_index,
+        avocadoBalance: parseFloat(account.avocado_balance) / this._pixelCost,
+        bananaBalance: parseFloat(account.banana_balance) / this._pixelCost,
+        numPixels: account.num_pixels,
+        farmingPreference: account.farming_preference,
+      }
+    }
+    account.startTime = new Date().getTime();
+    account.avocadoPixels = (account.farmingPreference === Berry.Avocado) ? (account.numPixels + 1) : 0;
+    account.bananaPixels = (account.farmingPreference === Berry.Banana) ? (account.numPixels) : 0;
+    account.avocadoRewardPerMs = account.avocadoPixels / (24 * 60 * 60 * 1000);
+    account.bananaRewardPerMs = account.bananaPixels / (24 * 60 * 60 * 1000);
+    return account;
+  }
+
+  async getAccount(accountId) {
+    return this.parseAccount(
+      await this._contract.get_account({account_id: accountId}),
+      accountId
+    );
+  }
+
+  async getAccountByIndex(accountIndex) {
+    return this.parseAccount(
+      await this._contract.get_account_by_index({account_index: accountIndex}),
+      "unknown",
+    );
+  }
+
   async refreshAccountStats() {
-    let balance = parseFloat(await this._contract.get_account_balance({account_id: this._accountId}));
-    let numPixels = await this._contract.get_account_num_pixels({account_id: this._accountId})
+    let account = await this.getAccount(this._accountId);
     if (this._balanceRefreshTimer) {
       clearInterval(this._balanceRefreshTimer);
       this._balanceRefreshTimer = null;
     }
-    const startTime = new Date().getTime();
-    const rewardPerMs = (numPixels + 1) * this._pixelCost / (24 * 60 * 60 * 1000);
 
     this.setState({
-      balance: balance / this._pixelCost,
-      pendingPixels: this._queue.length,
-      numPixels,
+      pendingPixels: this._pendingPixels.length + this._queue.length,
+      farmingBanana: account.farmingPreference === Berry.Banana,
+      account,
     });
 
     this._balanceRefreshTimer = setInterval(() => {
-      const t = new Date().getTime();
+      const t = new Date().getTime() - account.startTime;
       this.setState({
-        balance: (balance + (t - startTime) * rewardPerMs) / this._pixelCost,
+        account: Object.assign({}, account, {
+          avocadoBalance: account.avocadoBalance + t * account.avocadoRewardPerMs,
+          bananaBalance: account.bananaBalance + t * account.bananaRewardPerMs,
+        }),
         pendingPixels: this._pendingPixels.length + this._queue.length,
-      })
+      });
     }, 100);
   }
 
@@ -363,8 +412,8 @@ class App extends React.Component {
 
     this._account = this._walletConnection.account();
     this._contract = new nearAPI.Contract(this._account, NearConfig.contractName, {
-      viewMethods: ['get_lines', 'get_line_versions', 'get_pixel_cost', 'get_account_balance', 'get_account_num_pixels', 'get_account_id_by_index'],
-      changeMethods: ['draw', 'buy_tokens'],
+      viewMethods: ['get_account', 'get_account_by_index', 'get_lines', 'get_line_versions', 'get_pixel_cost', 'get_account_balance', 'get_account_num_pixels', 'get_account_id_by_index'],
+      changeMethods: ['draw', 'buy_tokens', 'select_farming_preference'],
     });
     this._pixelCost = parseFloat(await this._contract.get_pixel_cost());
     if (this._accountId) {
@@ -439,14 +488,7 @@ class App extends React.Component {
       accountIndex = parseInt(accountIndex);
       if (!(accountIndex in this._accounts) || counts[accountIndex] !== (this._oldCounts[accountIndex] || 0)) {
         try {
-          const accountId = await this._contract.get_account_id_by_index({account_index: accountIndex});
-          const accountBalance = await this._contract.get_account_balance({account_id: accountId});
-          const balance = parseFloat(accountBalance) / this._pixelCost;
-          this._accounts[accountIndex] = {
-            accountIndex,
-            accountId,
-            balance,
-          };
+          this._accounts[accountIndex] = await this.getAccountByIndex(accountIndex);
         } catch (err) {
           console.log("Failed to fetch account index #", accountIndex, err)
         }
@@ -620,6 +662,16 @@ class App extends React.Component {
     }
   }
 
+  async switchBerry(farmingBanana) {
+    this.setState({
+      farmingBanana,
+    })
+    await this._contract.select_farming_preference({
+      berry: farmingBanana ? Berry.Banana : Berry.Avocado,
+    });
+    await this.refreshAccountStats();
+  }
+
   render() {
 
     const content = !this.state.connected ? (
@@ -633,10 +685,24 @@ class App extends React.Component {
           </div>
           <div className="your-balance">
             Balance: <Balance
-              balance={this.state.balance - this.state.pendingPixels}
-              numPixels={this.state.numPixels}
+              account={this.state.account}
               pendingPixels={this.state.pendingPixels}
+              detailed={true}
           />
+          <div>
+            Farming preference:
+            <Switch
+                onChange={(e) => this.switchBerry(e)}
+                checked={this.state.farmingBanana}
+                className="react-switch"
+                height={30}
+                width={70}
+                offColor="#666"
+                onColor="#666"
+                uncheckedIcon={<div className="switch-berry avocado">{Avocado}</div>}
+                checkedIcon={<div className="switch-berry banana">{Banana}</div>}
+            />
+          </div>
           </div>
           <div className="buttons">
             <button
@@ -706,12 +772,28 @@ class App extends React.Component {
 }
 
 const Balance = (props) => {
+  const account = props.account;
+  if (!account) {
+    return "";
+  }
+  const fraction = props.detailed ? 3: 1;
+  const avacadoBalance = account.avocadoBalance - (props.pendingPixels || 0);
+  const avocadoFarm = (account.avocadoPixels > 0) ? (
+    <span>
+      {'(+'}<span className="font-weight-bold">{account.avocadoPixels}</span>{Avocado}{'/day)'}
+    </span>
+  ) : "";
+  const bananaFarm = (account.bananaPixels > 0) ? (
+    <span>
+      {'(+'}<span className="font-weight-bold">{account.bananaPixels}</span>{Banana}{'/day)'}
+    </span>
+  ) : "";
   return (
     <span className="balances font-small">
-      <span className="font-weight-bold">{props.balance.toFixed(3)}</span>
-      {Avocado}{' (+'}
-      <span className="font-weight-bold">{props.numPixels + 1}</span>
-      {Avocado}{'/day)'}
+      <span className="font-weight-bold">{avacadoBalance.toFixed(fraction)}</span>{Avocado}{' '}
+      <span className="font-weight-bold">{account.bananaBalance.toFixed(fraction)}</span>{Banana}{' '}
+      {avocadoFarm}
+      {bananaFarm}
       {
         props.pendingPixels ? <span> ({props.pendingPixels} pending)</span> : ""
       }
@@ -748,7 +830,7 @@ const Owner = (props) => {
       </td>
       <td className="text-nowrap">
         <small>
-          <Balance balance={account ? account.balance : 0} numPixels={props.numPixels} />
+          <Balance account={account} />
         </small>
       </td>
     </tr>
@@ -757,10 +839,9 @@ const Owner = (props) => {
 
 const Account = (props) => {
   const accountId = props.accountId;
-  let shortAccountId = accountId
-  if (accountId.length > 6 + 6 + 3) {
-    shortAccountId = accountId.slice(0, 6) + '...' + accountId.slice(-6);
-  }
+  const shortAccountId = (accountId.length > 6 + 6 + 3) ?
+    (accountId.slice(0, 6) + '...' + accountId.slice(-6)) :
+    accountId;
   return <a className="account"
             href={`https://explorer.near.org/accounts/${accountId}`}>{shortAccountId}</a>
 }
