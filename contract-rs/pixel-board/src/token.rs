@@ -104,10 +104,9 @@ impl VaultFungibleToken for Place {
     #[payable]
     fn transfer_raw(&mut self, receiver_id: ValidAccountId, amount: U128) {
         assert_paid();
-        unimplemented!()
-        // let amount = amount.into();
-        // self.withdraw_from_sender(receiver_id.as_ref(), amount);
-        // self.deposit_to_account(receiver_id.as_ref(), amount);
+        let amount = amount.into();
+        self.withdraw_from_sender(receiver_id.as_ref(), amount);
+        self.deposit_to_account(receiver_id.as_ref(), amount);
     }
 
     #[payable]
@@ -118,7 +117,42 @@ impl VaultFungibleToken for Place {
         payload: String,
     ) -> Promise {
         assert_paid();
-        unimplemented!()
+        let gas_to_receiver =
+            env::prepaid_gas().saturating_sub(GAS_FOR_REMAINING_COMPUTE + GAS_FOR_CALLBACK);
+
+        if gas_to_receiver < MIN_GAS_FOR_RECEIVER {
+            env::panic(b"Not enough gas attached. Attach at least 40 TGas");
+        }
+
+        let amount = amount.into();
+        let sender_id = self.withdraw_from_sender(receiver_id.as_ref(), amount);
+
+        // Creating a new vault
+        let vault_id = self.next_vault_id;
+        self.next_vault_id = vault_id.next();
+        let vault = Vault {
+            receiver_id: receiver_id.as_ref().clone(),
+            balance: amount,
+        };
+        self.vaults.insert(&vault_id, &vault);
+
+        // Calling the receiver
+        ext_token_receiver::on_receive_with_vault(
+            sender_id.clone(),
+            amount.into(),
+            vault_id,
+            payload,
+            receiver_id.as_ref(),
+            NO_DEPOSIT,
+            gas_to_receiver,
+        )
+        .then(ext_self::resolve_vault(
+            vault_id,
+            sender_id,
+            &env::current_account_id(),
+            NO_DEPOSIT,
+            GAS_FOR_CALLBACK,
+        ))
     }
 
     fn withdraw_from_vault(
@@ -127,68 +161,79 @@ impl VaultFungibleToken for Place {
         receiver_id: ValidAccountId,
         amount: U128,
     ) {
-        unimplemented!()
+        let mut vault = self.vaults.get(&vault_id).expect("Vault doesn't exist");
+        let vault_receiver_id = env::predecessor_account_id();
+        if &vault_receiver_id != &vault.receiver_id {
+            env::panic(b"The vault is not owned by the predecessor");
+        }
+        let amount = amount.into();
+        if vault.balance < amount {
+            env::panic(b"Not enough balance in the vault");
+        }
+        vault.balance -= amount;
+        self.vaults.insert(&vault_id, &vault);
+
+        self.deposit_to_account(receiver_id.as_ref(), amount);
     }
 
     fn resolve_vault(&mut self, vault_id: VaultId, sender_id: AccountId) -> U128 {
-        unimplemented!()
+        if env::current_account_id() != env::predecessor_account_id() {
+            env::panic(b"This method is private");
+        }
+
+        let vault = self.vaults.remove(&vault_id).expect("Vault doesn't exist");
+
+        if vault.balance > 0 {
+            self.deposit_to_account(&sender_id, vault.balance);
+        }
+
+        vault.balance.into()
     }
 }
-//
-// impl Place {
-//     /// Withdraws `amount` from the `predecessor_id` while comparing it to the `receiver_id`.
-//     /// Return `predecessor_id` and hash of the predecessor
-//     fn withdraw_from_sender(&mut self, receiver_id: &AccountId, amount: Balance) -> AccountId {
-//         if amount == 0 {
-//             env::panic(b"Transfer amount should be positive");
-//         }
-//         let sender_id = env::predecessor_account_id();
-//         if &sender_id == receiver_id {
-//             env::panic(b"The receiver should be different from the sender");
-//         }
-//
-//         // Retrieving the account from the state.
-//         let mut account = self.get_mut_account(sender_id);
-//
-//         // Checking and updating the balance
-//         if account.balance < amount {
-//             env::panic(b"Not enough balance");
-//         }
-//         account.balance -= amount;
-//
-//         // Saving the account back to the state.
-//         self.set_account(&sender_id_hash, &account);
-//
-//         sender_id
-//     }
-//
-//     /// Deposits `amount` to the `account_id`
-//     fn deposit_to_account(&mut self, account_id: &AccountId, amount: Balance) {
-//         if amount == 0 {
-//             return;
-//         }
-//         // Retrieving the account from the state.
-//         let (mut account, account_id_hash) = self.get_account_expect(&account_id);
-//         account.balance += amount;
-//         // Saving the account back to the state.
-//         self.set_account(&account_id_hash, &account);
-//     }
-//
-//     /// Helper method to get the account details for `owner_id`.
-//     fn get_account_expect(&self, account_id: &AccountId) -> (Account, ShortAccountHash) {
-//         let account_id_hash: ShortAccountHash = account_id.into();
-//         if let Some(account) = self.accounts.get(&account_id_hash) {
-//             (account, account_id_hash)
-//         } else {
-//             env::panic(format!("Account {} doesn't exist", account_id).as_bytes())
-//         }
-//     }
-//
-//     /// Helper method to set the account details for `owner_id` to the state.
-//     fn set_account(&mut self, account_id_hash: &ShortAccountHash, account: &Account) {
-//         self.accounts.insert(account_id_hash, account);
-//     }
-// }
+
+impl Place {
+    /// Withdraws `amount` from the `predecessor_id` while comparing it to the `receiver_id`.
+    /// Return `predecessor_id` and hash of the predecessor
+    fn withdraw_from_sender(&mut self, receiver_id: &AccountId, amount: Balance) -> AccountId {
+        if amount == 0 {
+            env::panic(b"Transfer amount should be positive");
+        }
+        let sender_id = env::predecessor_account_id();
+        if &sender_id == receiver_id {
+            env::panic(b"The receiver should be different from the sender");
+        }
+
+        // Retrieving the account from the state.
+        let mut account = self.get_mut_account(sender_id.clone());
+
+        // Checking and updating the balance
+        if account.banana_balance < amount {
+            env::panic(b"Not enough banana balance");
+        }
+        account.banana_balance -= amount;
+
+        // Saving the account back to the state.
+        self.set_account(&account);
+
+        sender_id
+    }
+
+    /// Deposits `amount` to the `account_id`
+    fn deposit_to_account(&mut self, account_id: &AccountId, amount: Balance) {
+        if amount == 0 {
+            return;
+        }
+        // Retrieving the account from the state.
+        let mut account = self
+            .get_internal_account_by_id(&account_id)
+            .expect("Receiver account doesn't exist");
+        self.touch(&mut account);
+
+        account.banana_balance += amount;
+        // Saving the account back to the state.
+        self.set_account(&account);
+    }
+}
 
 fn assert_paid() {
     assert!(
