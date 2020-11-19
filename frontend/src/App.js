@@ -517,34 +517,24 @@ class App extends React.Component {
       }
       for (let j = 0; j < BoardWidth; ++j) {
         const p = line[j];
+        ctx.fillStyle = intToColor(p.color);
+        ctx.fillRect(j * CellWidth, i * CellHeight, CellWidth, CellHeight);
         if (this.state.highlightedAccountIndex >= 0) {
           if (p.ownerIndex !== this.state.highlightedAccountIndex) {
-            ctx.fillStyle = '#000';
-            ctx.fillRect(j * CellWidth, i * CellHeight, CellWidth, CellHeight);
-            ctx.fillStyle = transparentColor(p.color, 0.2);
-            ctx.fillRect(j * CellWidth, i * CellHeight, CellWidth, CellHeight);
-            ctx.beginPath();
-            ctx.strokeStyle = ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-            ctx.lineWidth = 0.5;
-            ctx.moveTo(j * CellWidth, i * CellHeight);
-            ctx.lineTo((j + 1) * CellWidth, (i + 1) * CellHeight);
-            ctx.moveTo((j + 1) * CellWidth, i * CellHeight);
-            ctx.lineTo((j) * CellWidth, (i + 1) * CellHeight);
-            ctx.stroke();
-            ctx.closePath();
+            ctx.fillStyle = 'rgba(32, 32, 32, 0.8)';
+            ctx.fillRect(j * CellWidth, i * CellHeight, CellWidth / 2, CellHeight / 2);
+            ctx.fillRect((j + 0.5) * CellWidth, (i + 0.5) * CellHeight, CellWidth/ 2, CellHeight/ 2);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.fillRect(j * CellWidth, (i + 0.5) * CellHeight, CellWidth / 2, CellHeight / 2);
+            ctx.fillRect((j + 0.5) * CellWidth, i * CellHeight, CellWidth/ 2, CellHeight/ 2);
           } else {
-            ctx.fillStyle = intToColor(p.color);
-            ctx.fillRect(j * CellWidth, i * CellHeight, CellWidth, CellHeight);
             ctx.beginPath();
-            ctx.strokeStyle = ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.strokeStyle = ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
             ctx.lineWidth = 0.5;
             ctx.rect(j * CellWidth + 0.5, i * CellHeight + 0.5, CellWidth - 1, CellHeight - 1);
             ctx.stroke();
             ctx.closePath();
           }
-        } else {
-          ctx.fillStyle = intToColor(p.color);
-          ctx.fillRect(j * CellWidth, i * CellHeight, CellWidth, CellHeight);
         }
       }
     }
