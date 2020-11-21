@@ -10,8 +10,8 @@ const STORAGE_PRICE_PER_BYTE: Balance = 100_000_000_000_000_000_000;
 const SAFETY_BAR: Balance = 50_000000_000000_000000_000000;
 
 const FARM_START_TIME: u64 = 1606019138008904777;
-const ONE_SECOND: u64 = 1_000_000_000;
-const PORTION_OF_REWARDS: Balance = 24 * 60 * 60;
+const REWARD_PERIOD: u64 = 60 * 1_000_000_000;
+const PORTION_OF_REWARDS: Balance = 24 * 60;
 
 const FARM_CONTRACT_ID: &str = "farm.berryclub.ek.near";
 // const FARM_CONTRACT_ID: &str = "dev-1605908677227-6741841";
@@ -139,7 +139,9 @@ impl Place {
 impl Place {
     fn maybe_send_reward(&mut self) {
         let current_time = env::block_timestamp();
-        if core::cmp::max(FARM_START_TIME, self.last_reward_timestamp + ONE_SECOND) > current_time {
+        if core::cmp::max(FARM_START_TIME, self.last_reward_timestamp + REWARD_PERIOD)
+            > current_time
+        {
             return;
         }
         self.last_reward_timestamp = current_time;
