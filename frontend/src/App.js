@@ -23,6 +23,7 @@ const NearConfig = IsMainnet ? MainNearConfig : TestNearConfig;
 
 const Avocado = <span role="img" aria-label="avocado" className="berry">🥑</span>;
 const Banana = <span role="img" aria-label="banana" className="berry">🍌</span>;
+const Cucumber = <span role="img" aria-label="cucumber" className="berry">🥒</span>;
 
 const Berry = {
   Avocado: 'Avocado',
@@ -725,7 +726,11 @@ class App extends React.Component {
         <div className="container">
           <div className="row">
             <div>
-              <h2>{Avocado} Berry Club {Banana}</h2>
+              <h2>{Avocado} Berry Club {Banana}</h2>{' '}
+              <a
+                className="btn btn-outline-none"
+                href="https://farm.berryclub.io">Berry Farm {Cucumber}
+              </a>
               {content}
               <div>
                 {this.state.signedIn ? (<div>
@@ -741,6 +746,14 @@ class App extends React.Component {
                         className={this.state.boardLoaded ? "pixel-board" : "pixel-board c-animated-background"}>
 
                 </canvas>
+              </div>
+              <div>
+                <div className="call-to-action">
+                  <a
+                    className="btn"
+                    href="https://farm.berryclub.io">Berry Farm {Cucumber}
+                  </a> is now open!
+                </div>
               </div>
             </div>
             <div className="leaderboard">

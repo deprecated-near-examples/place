@@ -2,7 +2,19 @@ use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::{LookupMap, Vector};
 use near_sdk::json_types::{U128, U64};
 use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::{env, near_bindgen, AccountId, Balance};
+use near_sdk::{env, near_bindgen, AccountId, Balance, Promise};
+
+/// Price per 1 byte of storage from mainnet genesis config.
+const STORAGE_PRICE_PER_BYTE: Balance = 100_000_000_000_000_000_000;
+
+const SAFETY_BAR: Balance = 50_000000_000000_000000_000000;
+
+const FARM_START_TIME: u64 = 1606019138008904777;
+const ONE_SECOND: u64 = 1_000_000_000;
+const PORTION_OF_REWARDS: Balance = 24 * 60 * 60;
+
+const FARM_CONTRACT_ID: &str = "farm.berryclub.ek.near";
+// const FARM_CONTRACT_ID: &str = "dev-1605908677227-6741841";
 
 pub mod account;
 pub use crate::account::*;
@@ -23,24 +35,13 @@ pub enum Berry {
     Banana,
 }
 
-/// Legacy version of the state before banana berries
-#[derive(BorshDeserialize, BorshSerialize)]
-pub struct PlaceVersionAvocado {
-    pub account_indices: LookupMap<AccountId, u32>,
-    pub board: board::PixelBoard,
-    pub accounts: Vector<AccountVersionAvocado>,
-    pub initialization_timestamp: u64,
-    pub minted_amount: Balance,
-    pub burned_amount: Balance,
-}
-
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct Place {
     pub account_indices: LookupMap<AccountId, u32>,
     pub board: board::PixelBoard,
     pub legacy_accounts: Vector<AccountVersionAvocado>,
-    pub initialization_timestamp: u64,
+    pub last_reward_timestamp: u64,
     pub num_accounts: u32,
     pub accounts: LookupMap<u32, UpgradableAccount>,
     pub bought_balances: Vec<Balance>,
@@ -63,24 +64,6 @@ impl Default for Place {
 #[near_bindgen]
 impl Place {
     #[init]
-    pub fn migrate_from_version_avocado() -> Self {
-        let place_avocado: PlaceVersionAvocado = env::state_read().expect("Not initialized");
-        Self {
-            account_indices: place_avocado.account_indices,
-            board: place_avocado.board,
-            num_accounts: place_avocado.accounts.len() as u32,
-            legacy_accounts: place_avocado.accounts,
-            accounts: LookupMap::new(b"u".to_vec()),
-            initialization_timestamp: place_avocado.initialization_timestamp,
-            bought_balances: vec![place_avocado.minted_amount, 0],
-            burned_balances: vec![place_avocado.burned_amount, 0],
-            farmed_balances: vec![0, 0],
-            vaults: LookupMap::new(b"v".to_vec()),
-            next_vault_id: VaultId(0),
-        }
-    }
-
-    #[init]
     pub fn new() -> Self {
         assert!(!env::state_exists(), "Already initialized");
         let mut place = Self {
@@ -89,7 +72,7 @@ impl Place {
             legacy_accounts: Vector::new(b"a".to_vec()),
             num_accounts: 0,
             accounts: LookupMap::new(b"u".to_vec()),
-            initialization_timestamp: env::block_timestamp(),
+            last_reward_timestamp: env::block_timestamp(),
             bought_balances: vec![0, 0],
             burned_balances: vec![0, 0],
             farmed_balances: vec![0, 0],
@@ -140,14 +123,41 @@ impl Place {
             account.num_pixels -= num_pixels;
             self.save_account(account);
         }
+
+        self.maybe_send_reward();
     }
 
     pub fn get_num_accounts(&self) -> u32 {
         self.num_accounts
     }
 
-    pub fn get_initialization_timestamp(&self) -> U64 {
-        self.initialization_timestamp.into()
+    pub fn get_last_reward_timestamp(&self) -> U64 {
+        self.last_reward_timestamp.into()
+    }
+}
+
+impl Place {
+    fn maybe_send_reward(&mut self) {
+        let current_time = env::block_timestamp();
+        if core::cmp::max(FARM_START_TIME, self.last_reward_timestamp + ONE_SECOND) > current_time {
+            return;
+        }
+        self.last_reward_timestamp = current_time;
+        let account_balance = env::account_balance();
+        let storage_usage = env::storage_usage();
+        let locked_for_storage = Balance::from(storage_usage) * STORAGE_PRICE_PER_BYTE + SAFETY_BAR;
+        if account_balance <= locked_for_storage {
+            return;
+        }
+        let liquid_balance = account_balance - locked_for_storage;
+        let reward = liquid_balance / PORTION_OF_REWARDS;
+        env::log(format!("Distributed reward of {}", reward).as_bytes());
+        Promise::new(FARM_CONTRACT_ID.to_string()).function_call(
+            b"take_my_near".to_vec(),
+            b"{}".to_vec(),
+            reward,
+            GAS_BASE_COMPUTE,
+        );
     }
 }
 

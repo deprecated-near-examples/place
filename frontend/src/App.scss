@@ -3,6 +3,7 @@
 }
 h2 {
   margin: 16px 0;
+  display: inline-block;
 }
 
 .balances {
@@ -13,16 +14,25 @@ h2 {
   font-weight: bold;
 }
 
-button {
+.btn {
   border: 2px solid #0072CE;
   padding: 8px;
   height: 32px;
-  margin: 8px 0;
   background: white;
   border-radius: 16px;
-  margin-right: 16px;
+  margin: 8px 16px 8px 0;
   line-height: 12px;
   cursor: pointer;
+  text-decoration: none;
+  color: black;
+  &:disabled {
+    border-color: #ccc !important;;
+    background: white !important;
+    color: #ccc !important;
+  }
+  &:focus {
+    outline: none;
+  }
   &:hover {
     background: #ccddff;
   }
@@ -38,6 +48,17 @@ button {
     background: #7e7;
   }
 }
+
+.btn-outline-none {
+  border: none;
+  margin-left: 0.5em;
+}
+
+.btn-outline-secondary {
+  margin-top: 1.5em;
+  border-color: #eee;
+}
+
 
 .container {
   padding: 16px;
@@ -124,8 +145,16 @@ Layout For Tablet / Phone
     margin-left: -16px;
   }
   h2 {
-    width: 100%;
     text-align: left;
+  }
+}
+
+@media (max-width: 425px) {
+  .float-right {
+    position: relative !important;
+  }
+  .btn-outline-secondary {
+    margin-top: 0;
   }
 }
 
@@ -166,11 +195,6 @@ Layout For Tablet / Phone
 
 
 
-
-
-
-
-
 @keyframes placeHolderShimmer {
   0% {
     background-position: 0px 0;
@@ -188,4 +212,8 @@ Layout For Tablet / Phone
   animation-timing-function: linear;
   background: #333;
   background: linear-gradient(to bottom, #333 0%, #116611 4%, #55ff55 8%, #116611 12%, #333 16%);
+}
+
+.call-to-action {
+  font-size: 3em;
 }

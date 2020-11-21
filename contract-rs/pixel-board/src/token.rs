@@ -9,7 +9,7 @@ const NO_DEPOSIT: Balance = 0;
 
 /// NOTE: These fees are going to change with the update.
 /// Basic compute.
-const GAS_BASE_COMPUTE: Gas = 5_000_000_000_000;
+pub(crate) const GAS_BASE_COMPUTE: Gas = 5_000_000_000_000;
 /// Fee for function call promise.
 const GAS_FOR_PROMISE: Gas = 5_000_000_000_000;
 /// Fee for the `.then` call.
