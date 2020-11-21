@@ -125,39 +125,6 @@ h2 {
   border: 1px solid #ddd;
 }
 
-/********************************
-Layout For Tablet / Phone
-********************************/
-
-@media (max-width: 1200px) {
-  .row {
-    flex-direction: column;
-    max-width: 800px;
-    div {
-      padding-left: 0 !important;
-    }
-  }
-}
-
-@media (max-width: 800px) {
-  .pixel-board {
-    width: 100vw;
-    margin-left: -16px;
-  }
-  h2 {
-    text-align: left;
-  }
-}
-
-@media (max-width: 425px) {
-  .float-right {
-    position: relative !important;
-  }
-  .btn-outline-secondary {
-    margin-top: 0;
-  }
-}
-
 
 
 .hud {
@@ -216,4 +183,44 @@ Layout For Tablet / Phone
 
 .call-to-action {
   font-size: 3em;
+  .btn {
+    margin-right: 0em;
+  }
+}
+
+
+/********************************
+Layout For Tablet / Phone
+********************************/
+
+@media (max-width: 1200px) {
+  .row {
+    flex-direction: column;
+    max-width: 800px;
+    div {
+      padding-left: 0 !important;
+    }
+  }
+}
+
+@media (max-width: 800px) {
+  .pixel-board {
+    width: 100vw;
+    margin-left: -16px;
+  }
+  h2 {
+    text-align: left;
+  }
+}
+
+@media (max-width: 425px) {
+  .float-right {
+    position: relative !important;
+  }
+  .btn-outline-secondary {
+    margin-top: 0;
+  }
+  .call-to-action {
+    font-size: 1.6em;
+  }
 }
