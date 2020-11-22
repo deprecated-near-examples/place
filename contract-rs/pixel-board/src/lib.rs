@@ -107,6 +107,9 @@ impl Place {
     }
 
     pub fn draw(&mut self, pixels: Vec<SetPixelRequest>) {
+        if pixels.is_empty() {
+            return;
+        }
         let mut account = self.get_mut_account(env::predecessor_account_id());
         let new_pixels = pixels.len() as u32;
         let cost = account.charge(Berry::Avocado, new_pixels);
@@ -134,25 +137,33 @@ impl Place {
     pub fn get_last_reward_timestamp(&self) -> U64 {
         self.last_reward_timestamp.into()
     }
+
+    pub fn get_next_reward_timestamp(&self) -> U64 {
+        core::cmp::max(FARM_START_TIME, self.last_reward_timestamp + REWARD_PERIOD).into()
+    }
+
+    pub fn get_expected_reward(&self) -> U128 {
+        let account_balance = env::account_balance();
+        let storage_usage = env::storage_usage();
+        let locked_for_storage = Balance::from(storage_usage) * STORAGE_PRICE_PER_BYTE + SAFETY_BAR;
+        if account_balance <= locked_for_storage {
+            return 0.into();
+        }
+        let liquid_balance = account_balance - locked_for_storage;
+        let reward = liquid_balance / PORTION_OF_REWARDS;
+        reward.into()
+    }
 }
 
 impl Place {
     fn maybe_send_reward(&mut self) {
         let current_time = env::block_timestamp();
-        if core::cmp::max(FARM_START_TIME, self.last_reward_timestamp + REWARD_PERIOD)
-            > current_time
-        {
+        let next_reward_timestamp: u64 = self.get_next_reward_timestamp().into();
+        if next_reward_timestamp > current_time {
             return;
         }
         self.last_reward_timestamp = current_time;
-        let account_balance = env::account_balance();
-        let storage_usage = env::storage_usage();
-        let locked_for_storage = Balance::from(storage_usage) * STORAGE_PRICE_PER_BYTE + SAFETY_BAR;
-        if account_balance <= locked_for_storage {
-            return;
-        }
-        let liquid_balance = account_balance - locked_for_storage;
-        let reward = liquid_balance / PORTION_OF_REWARDS;
+        let reward: Balance = self.get_expected_reward().into();
         env::log(format!("Distributed reward of {}", reward).as_bytes());
         Promise::new(FARM_CONTRACT_ID.to_string()).function_call(
             b"take_my_near".to_vec(),
