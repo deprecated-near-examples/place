@@ -4,6 +4,7 @@ import BN from 'bn.js';
 import * as nearAPI from 'near-api-js'
 import { HuePicker, GithubPicker } from 'react-color'
 import Switch from "react-switch"
+import {Weapons} from "./Weapons";
 
 const PixelPrice = new BN("10000000000000000000000");
 const IsMainnet = true;
@@ -37,13 +38,29 @@ const ExpectedLineLength = 4 + 8 * BoardWidth;
 const CellWidth = 16;
 const CellHeight = 16;
 const MaxNumColors = 31;
-const BatchOfPixels = 30;
+const BatchOfPixels = 100;
 // 500 ms
 const BatchTimeout = 500;
 const RefreshBoardTimeout = 1000;
 const MaxWorkTime = 10 * 60 * 1000;
 
 const intToColor = (c) => `#${c.toString(16).padStart(6, '0')}`;
+const imgColorToInt = (c, bgColor) => {
+  const cr = (c & 255);
+  const cg = ((c >> 8) & 255);
+  const cb = ((c >> 16) & 255);
+  const ca = ((c >> 24) & 255) / 255;
+
+  const bb = (bgColor & 255);
+  const bg = ((bgColor >> 8) & 255);
+  const br = ((bgColor >> 16) & 255);
+
+  const r = Math.round(cr * ca + br * (1 - ca));
+  const g = Math.round(cg * ca + bg * (1 - ca));
+  const b = Math.round(cb * ca + bb * (1 - ca));
+  return (r << 16) + (g << 8) + b;
+
+}
 const int2hsv = (cInt) => {
   cInt = intToColor(cInt).substr(1)
   const r = parseInt(cInt.substr(0, 2), 16) / 255
@@ -78,6 +95,8 @@ const decodeLine = (line) => {
   return pixels;
 };
 
+const WeaponsCheat = "idkfa";
+
 class App extends React.Component {
   constructor(props) {
     super(props);
@@ -102,6 +121,8 @@ class App extends React.Component {
       highlightedAccountIndex: -1,
       selectedOwnerIndex: false,
       farmingBanana: false,
+      weaponsOn: false,
+      weaponsCodePosition: 0,
     };
 
     this._buttonDown = false;
@@ -131,6 +152,17 @@ class App extends React.Component {
     const canvas = this.canvasRef.current;
     this._context = canvas.getContext('2d');
 
+    const click = async () => {
+      if (this.state.rendering) {
+        await this.drawImg(this.state.selectedCell);
+      } else if (this.state.pickingColor) {
+        this.pickColor(this.state.selectedCell);
+      } else {
+        this.saveColor();
+        await this.drawPixel(this.state.selectedCell);
+      }
+    };
+
     const mouseMove = (e) => {
       let x, y;
       if ('touches' in e) {
@@ -158,12 +190,7 @@ class App extends React.Component {
         }, async () => {
           this.renderCanvas()
           if (this.state.selectedCell !== null && this._buttonDown) {
-            if (this.state.pickingColor) {
-              this.pickColor(this.state.selectedCell);
-            } else {
-              this.saveColor();
-              await this.drawPixel(this.state.selectedCell);
-            }
+            await click();
           }
         })
       }
@@ -177,12 +204,7 @@ class App extends React.Component {
     const mouseDown = async (e) => {
       this._buttonDown = true;
       if (this.state.selectedCell !== null) {
-        if (this.state.pickingColor) {
-          this.pickColor(this.state.selectedCell);
-        } else {
-          this.saveColor();
-          await this.drawPixel(this.state.selectedCell);
-        }
+        await click();
       }
     };
 
@@ -220,7 +242,19 @@ class App extends React.Component {
     })
 
     document.addEventListener('keyup', (e) => {
-      !e.altKey && this.disablePickColor()
+      if (this.state.weaponsCodePosition < WeaponsCheat.length) {
+        if (e.key.toLowerCase() === WeaponsCheat[this.state.weaponsCodePosition]) {
+          this.setState({
+            weaponsCodePosition: this.state.weaponsCodePosition + 1,
+            weaponsOn: this.state.weaponsCodePosition + 1 === WeaponsCheat.length,
+          });
+        } else {
+          this.setState({
+            weaponsCodePosition: 0,
+          });
+        }
+      }
+      !e.altKey && this.disablePickColor();
     })
   }
 
@@ -308,6 +342,44 @@ class App extends React.Component {
       }, BatchTimeout);
     }
 
+  }
+
+  async drawImg(cell) {
+    if (!this.state.signedIn || !this._lines || !this._lines[cell.y]) {
+      return;
+    }
+    const balance = this.state.account ? this.state.account.avocadoBalance : 0;
+
+    if (balance - this.state.pendingPixels < this.state.avocadoNeeded) {
+      return;
+    }
+
+    const img = this.imageData;
+    const w = img.width;
+    const h = img.height;
+    const x = cell.x - Math.trunc(w / 2);
+    const y = cell.y - Math.trunc(h / 2);
+    const d = new Uint32Array(this.imageData.data.buffer);
+    for (let i = 0; i < h; ++i) {
+      for (let j = 0; j < w; ++j) {
+        const imgColor = d[i * w + j];
+        if (imgColor && y + i >= 0 && y + i < BoardHeight && x + j >= 0 && x + j < BoardWidth) {
+          const bgColor = this._lines[y + i] ? this._lines[y + i][x + j].color : 0;
+          const color = imgColorToInt(imgColor, bgColor);
+          this._queue.push({
+            x: x + j,
+            y: y + i,
+            color,
+          });
+        }
+      }
+    }
+    this.setState({
+      rendering: false,
+    })
+
+    this._stopRefreshTime = new Date().getTime() + MaxWorkTime;
+    await this._pingQueue(false);
   }
 
   async drawPixel(cell) {
@@ -547,7 +619,25 @@ class App extends React.Component {
 
     if (this.state.selectedCell) {
       const c = this.state.selectedCell;
-      if (this.state.pickingColor) {
+      if (this.state.rendering) {
+        const img = this.imageData;
+        const w = img.width;
+        const h = img.height;
+        const x = c.x - Math.trunc(w / 2);
+        const y = c.y - Math.trunc(h / 2);
+        const d = new Uint32Array(this.imageData.data.buffer);
+        for (let i = 0; i < h; ++i) {
+          for (let j = 0; j < w; ++j) {
+            const color = d[i * w + j];
+            if (color && y + i >= 0 && y + i < BoardHeight && x + j >= 0 && x + j < BoardWidth) {
+              const bgColor = this._lines[y + i] ? this._lines[y + i][x + j].color : 0;
+              ctx.fillStyle = intToColor(imgColorToInt(color, bgColor));
+              ctx.fillRect((x + j) * CellWidth, (y + i) * CellHeight, CellWidth, CellHeight);
+            }
+          }
+        }
+        // ctx.drawImage(this.imgCanvas, 0, 0, this.imageData.width, this.imageData.height, c.x * CellWidth, c.y * CellHeight, w * CellWidth, h * CellHeight);
+      } else if (this.state.pickingColor) {
         const color = this._lines[c.y] ? this._lines[c.y][c.x].color : 0;
         ctx.beginPath();
         ctx.strokeStyle = ctx.fillStyle = transparentColor(color, 0.5);
@@ -577,7 +667,9 @@ class App extends React.Component {
         ctx.stroke();
         ctx.closePath();
       }
+
     }
+
 
     if (!this.state.boardLoaded) {
       this.setState({
@@ -663,6 +755,17 @@ class App extends React.Component {
     await this.refreshAccountStats();
   }
 
+  async renderImg(img, avocadoNeeded) {
+    this.imageData = img;
+    this.setState({
+      weaponsOn: false,
+      weaponsCodePosition: 0,
+      rendering: true,
+      pickingColor: false,
+      avocadoNeeded
+    })
+  }
+
   render() {
 
     const content = !this.state.connected ? (
@@ -722,7 +825,15 @@ class App extends React.Component {
               onClick={() => this.requestSignIn()}>Log in with NEAR Wallet</button>
         </div>
     ));
+    const weapons = this.state.weaponsOn ? (
+      <div>
+        <Weapons
+          account={this.state.account}
+          renderIt={(img, avocadoNeeded) => this.renderImg(img, avocadoNeeded)}/>
+      </div>
+    ) : "";
     return (
+      <div>
         <div className="container">
           <div className="row">
             <div>
@@ -770,6 +881,8 @@ class App extends React.Component {
             </div>
           </div>
         </div>
+        {weapons}
+      </div>
     );
   }
 }
