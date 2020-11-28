@@ -366,11 +366,13 @@ class App extends React.Component {
         if (imgColor && y + i >= 0 && y + i < BoardHeight && x + j >= 0 && x + j < BoardWidth) {
           const bgColor = this._lines[y + i] ? this._lines[y + i][x + j].color : 0;
           const color = imgColorToInt(imgColor, bgColor);
-          this._queue.push({
-            x: x + j,
-            y: y + i,
-            color,
-          });
+          if (color !== bgColor) {
+            this._queue.push({
+              x: x + j,
+              y: y + i,
+              color,
+            });
+          }
         }
       }
     }
@@ -636,7 +638,6 @@ class App extends React.Component {
             }
           }
         }
-        // ctx.drawImage(this.imgCanvas, 0, 0, this.imageData.width, this.imageData.height, c.x * CellWidth, c.y * CellHeight, w * CellWidth, h * CellHeight);
       } else if (this.state.pickingColor) {
         const color = this._lines[c.y] ? this._lines[c.y][c.x].color : 0;
         ctx.beginPath();
