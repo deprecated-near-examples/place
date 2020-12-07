@@ -2,7 +2,7 @@ import "./App.scss";
 import React from 'react';
 import BN from 'bn.js';
 import * as nearAPI from 'near-api-js'
-import { HuePicker, GithubPicker } from 'react-color'
+import { AlphaPicker, HuePicker, GithubPicker } from 'react-color'
 import Switch from "react-switch"
 import {Weapons} from "./Weapons";
 
@@ -45,12 +45,9 @@ const RefreshBoardTimeout = 1000;
 const MaxWorkTime = 10 * 60 * 1000;
 
 const intToColor = (c) => `#${c.toString(16).padStart(6, '0')}`;
-const imgColorToInt = (c, bgColor) => {
-  const cr = (c & 255);
-  const cg = ((c >> 8) & 255);
-  const cb = ((c >> 16) & 255);
-  const ca = ((c >> 24) & 255) / 255;
+const intToColorWithAlpha = (c, a) => `#${c.toString(16).padStart(6, '0')}${Math.round(255 * a).toString(16).padStart(2, '0')}`;
 
+const rgbaToInt = (cr, cg, cb, ca, bgColor) => {
   const bb = (bgColor & 255);
   const bg = ((bgColor >> 8) & 255);
   const br = ((bgColor >> 16) & 255);
@@ -59,9 +56,17 @@ const imgColorToInt = (c, bgColor) => {
   const g = Math.round(cg * ca + bg * (1 - ca));
   const b = Math.round(cb * ca + bb * (1 - ca));
   return (r << 16) + (g << 8) + b;
-
 }
-const int2hsv = (cInt) => {
+
+const imgColorToInt = (c, bgColor) => {
+  const cr = (c & 255);
+  const cg = ((c >> 8) & 255);
+  const cb = ((c >> 16) & 255);
+  const ca = ((c >> 24) & 255) / 255;
+  return rgbaToInt(cr, cg, cb, ca, bgColor);
+}
+
+  const int2hsv = (cInt) => {
   cInt = intToColor(cInt).substr(1)
   const r = parseInt(cInt.substr(0, 2), 16) / 255
   const g = parseInt(cInt.substr(2, 2), 16) / 255
@@ -103,6 +108,7 @@ class App extends React.Component {
 
     const colors = ["#000000", "#666666", "#aaaaaa", "#FFFFFF", "#F44E3B", "#D33115", "#9F0500", "#FE9200", "#E27300", "#C45100", "#FCDC00", "#FCC400", "#FB9E00", "#DBDF00", "#B0BC00", "#808900", "#A4DD00", "#68BC00", "#194D33", "#68CCCA", "#16A5A5", "#0C797D", "#73D8FF", "#009CE0", "#0062B1", "#AEA1FF", "#7B64FF", "#653294", "#FDA1FF", "#FA28FF", "#AB149E"].map((c) => c.toLowerCase());
     const currentColor = parseInt(colors[Math.floor(Math.random() * colors.length)].substring(1), 16);
+    const defaultAlpha = 0.2;
 
     this.state = {
       connected: false,
@@ -111,8 +117,9 @@ class App extends React.Component {
       pendingPixels: 0,
       boardLoaded: false,
       selectedCell: null,
+      alpha: defaultAlpha,
       currentColor,
-      pickerColor: intToColor(currentColor),
+      pickerColor: intToColorWithAlpha(currentColor, defaultAlpha),
       colors,
       gammaColors: generateGamma(0),
       pickingColor: false,
@@ -181,7 +188,7 @@ class App extends React.Component {
       y = Math.trunc(y / e.target.clientHeight * BoardWidth);
       let cell = null;
       if (x >= 0 && x < BoardWidth && y >= 0 && y < BoardHeight) {
-        cell = { x, y };
+        cell = {x, y};
       }
       if (JSON.stringify(cell) !== JSON.stringify(this.state.selectedCell)) {
         this.setState({
@@ -280,11 +287,9 @@ class App extends React.Component {
     }
     const color = this._lines[cell.y][cell.x].color;
 
-    console.log(int2hsv(color))
-
     this.setState({
       currentColor: color,
-      pickerColor: intToColor(color),
+      pickerColor: intToColorWithAlpha(color, this.state.alpha),
       gammaColors: generateGamma(int2hsv(color)[0]),
       pickingColor: false,
     }, () => {
@@ -319,9 +324,8 @@ class App extends React.Component {
       // ignore
     }
     this._pendingPixels.forEach((p) => {
-      if (this._pending[p.y][p.x] === p.color)
-      {
-       this._pending[p.y][p.x] = -1;
+      if (this._pending[p.y][p.x] === p.color) {
+        this._pending[p.y][p.x] = -1;
       }
     });
     this._pendingPixels = [];
@@ -393,8 +397,14 @@ class App extends React.Component {
       return;
     }
 
-    if (this._pending[cell.y][cell.x] !== this.state.currentColor && this._lines[cell.y][cell.x].color !== this.state.currentColor) {
-      this._pending[cell.y][cell.x] = this.state.currentColor;
+    const bgColor = this._lines[cell.y] ? this._lines[cell.y][cell.x].color : 0;
+    const cb = (this.state.currentColor & 255);
+    const cg = ((this.state.currentColor >> 8) & 255);
+    const cr = ((this.state.currentColor >> 16) & 255);
+    const color = rgbaToInt(cr, cg, cb, this.state.alpha, bgColor);
+
+    if (this._pending[cell.y][cell.x] !== color && this._lines[cell.y][cell.x].color !== color) {
+      this._pending[cell.y][cell.x] = color;
     } else {
       return;
     }
@@ -402,7 +412,7 @@ class App extends React.Component {
     this._queue.push({
       x: cell.x,
       y: cell.y,
-      color: this.state.currentColor,
+      color,
     });
 
     this._stopRefreshTime = new Date().getTime() + MaxWorkTime;
@@ -478,7 +488,7 @@ class App extends React.Component {
 
   async _initNear() {
     const keyStore = new nearAPI.keyStores.BrowserLocalStorageKeyStore();
-    const near = await nearAPI.connect(Object.assign({ deps: { keyStore } }, NearConfig));
+    const near = await nearAPI.connect(Object.assign({deps: {keyStore}}, NearConfig));
     this._keyStore = keyStore;
     this._near = near;
 
@@ -598,10 +608,10 @@ class App extends React.Component {
           if (p.ownerIndex !== this.state.highlightedAccountIndex) {
             ctx.fillStyle = 'rgba(32, 32, 32, 0.8)';
             ctx.fillRect(j * CellWidth, i * CellHeight, CellWidth / 2, CellHeight / 2);
-            ctx.fillRect((j + 0.5) * CellWidth, (i + 0.5) * CellHeight, CellWidth/ 2, CellHeight/ 2);
+            ctx.fillRect((j + 0.5) * CellWidth, (i + 0.5) * CellHeight, CellWidth / 2, CellHeight / 2);
             ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
             ctx.fillRect(j * CellWidth, (i + 0.5) * CellHeight, CellWidth / 2, CellHeight / 2);
-            ctx.fillRect((j + 0.5) * CellWidth, i * CellHeight, CellWidth/ 2, CellHeight/ 2);
+            ctx.fillRect((j + 0.5) * CellWidth, i * CellHeight, CellWidth / 2, CellHeight / 2);
           } else {
             ctx.beginPath();
             ctx.strokeStyle = ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
@@ -656,9 +666,9 @@ class App extends React.Component {
       } else {
         ctx.fillStyle = transparentColor(this.state.currentColor, 0.2);
         ctx.fillRect(c.x * CellWidth, 0, CellWidth, c.y * CellHeight);
-        ctx.fillRect(c.x * CellWidth, (c.y+ 1) * CellHeight, CellWidth, (BoardHeight - c.y - 1) * CellHeight);
+        ctx.fillRect(c.x * CellWidth, (c.y + 1) * CellHeight, CellWidth, (BoardHeight - c.y - 1) * CellHeight);
         ctx.fillRect(0, c.y * CellHeight, c.x * CellWidth, CellHeight);
-        ctx.fillRect( (c.x + 1) * CellWidth, c.y * CellHeight, (BoardWidth - c.x - 1) * CellWidth, CellHeight);
+        ctx.fillRect((c.x + 1) * CellWidth, c.y * CellHeight, (BoardWidth - c.x - 1) * CellWidth, CellHeight);
 
         ctx.beginPath();
         ctx.lineWidth = 3;
@@ -682,8 +692,8 @@ class App extends React.Component {
   async requestSignIn() {
     const appTitle = 'Berry Club';
     await this._walletConnection.requestSignIn(
-        NearConfig.contractName,
-        appTitle
+      NearConfig.contractName,
+      appTitle
     )
   }
 
@@ -696,8 +706,15 @@ class App extends React.Component {
     })
   }
 
+  async alphaColorChange(c) {
+    this.setState({
+      alpha: c.rgb.a,
+    }, () => {
+      this.changeColor(c)
+    });
+  }
+
   hueColorChange(c) {
-    console.log(c)
     this.setState({
       gammaColors: generateGamma(c.hsl.h)
     })
@@ -717,6 +734,10 @@ class App extends React.Component {
 
   changeColor(c) {
     const currentColor = c.rgb.r * 0x010000 + c.rgb.g * 0x000100 + c.rgb.b;
+    c.hex = intToColorWithAlpha(currentColor, this.state.alpha);
+    c.rgb.a = this.state.alpha;
+    c.hsl.a = this.state.alpha;
+    c.hsv.a = this.state.alpha;
     this.setState({
       pickerColor: c,
       currentColor,
@@ -814,7 +835,12 @@ class App extends React.Component {
               onClick={() => this.buyTokens(500)}>DEAL: Buy <span className="font-weight-bold">1500{Avocado}</span> for <span className="font-weight-bold">Ⓝ5</span></button>
           </div>
           <div className="color-picker">
-            <HuePicker color={ this.state.pickerColor } width="100%" disableAlpha={true} onChange={(c) => this.hueColorChange(c)}/>
+            <HuePicker color={ this.state.pickerColor } width="100%" onChange={(c) => this.hueColorChange(c)}/>
+            <AlphaPicker color={ this.state.pickerColor } width="100%" onChange={(c) => this.alphaColorChange(c)}/>
+            <div className={this.state.alpha >= 0.75 ? "display-warning" : "hidden"}>
+              <span role="img" aria-label="warning">⚠️</span>️ Please! Don't destroy art! If you just want to farm {Banana}, just draw with low opacity.
+              <span role="img" aria-label="pray">🙏</span>️
+            </div>
             <GithubPicker className="circle-picker" colors={this.state.gammaColors} color={ this.state.pickerColor } triangle='hide' width="100%" onChangeComplete={(c) => this.changeColor(c)}/>
             <GithubPicker className="circle-picker" colors={this.state.colors} color={ this.state.pickerColor } triangle='hide' width="100%" onChangeComplete={(c) => this.hueColorChange(c)}/>
           </div>
