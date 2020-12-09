@@ -1,6 +1,6 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::{LookupMap, Vector};
-use near_sdk::json_types::{U128, U64};
+use near_sdk::json_types::{ValidAccountId, U128, U64};
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{env, near_bindgen, AccountId, Balance, Promise};
 
@@ -90,6 +90,10 @@ impl Place {
     pub fn register_account(&mut self) {
         let account = self.get_mut_account(env::predecessor_account_id());
         self.save_account(account);
+    }
+
+    pub fn account_exists(&self, account_id: ValidAccountId) -> bool {
+        self.account_indices.contains_key(account_id.as_ref())
     }
 
     #[payable]
