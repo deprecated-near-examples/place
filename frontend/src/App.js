@@ -1,4 +1,5 @@
 import "./App.scss";
+import "./gh-fork-ribbon.css";
 import React from 'react';
 import BN from 'bn.js';
 import * as nearAPI from 'near-api-js'
@@ -909,6 +910,8 @@ class App extends React.Component {
           </div>
         </div>
         {weapons}
+        <a className="github-fork-ribbon right-bottom fixed" href="https://github.com/evgenykuzyakov/place" data-ribbon="Fork me on GitHub"
+           title="Fork me on GitHub">Fork me on GitHub</a>
       </div>
     );
   }
