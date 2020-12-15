@@ -870,6 +870,10 @@ class App extends React.Component {
                 className="btn btn-outline-none"
                 href="https://farm.berryclub.io">Berry Farm {Cucumber}
               </a>
+              <a
+                className="btn btn-outline-none"
+                href="https://bananaswap.berryclub.io">[BETA] Banana Swap {Banana}
+              </a>
               {content}
               <div>
                 {this.state.signedIn ? (<div>
@@ -886,14 +890,6 @@ class App extends React.Component {
 
                 </canvas>
               </div>
-              <div>
-                <div className="call-to-action">
-                  <a
-                    className="btn"
-                    href="https://farm.berryclub.io">Berry Farm {Cucumber}
-                  </a> is now open!
-                </div>
-              </div>
             </div>
             <div className="leaderboard">
               <h2>Leaderboard</h2>
@@ -908,6 +904,14 @@ class App extends React.Component {
               </div>
             </div>
           </div>
+        </div>
+        <div className="padded">
+          <div className="video-container">
+            <iframe title="youtube" className="youtube" src="https://www.youtube.com/embed/lMSWhCwstLo" frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen></iframe>
+          </div>
+          <div></div>
         </div>
         {weapons}
         <a className="github-fork-ribbon right-bottom fixed" href="https://github.com/evgenykuzyakov/place" data-ribbon="Fork me on GitHub"
