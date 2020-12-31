@@ -108,8 +108,9 @@ class App extends React.Component {
     super(props);
 
     const colors = ["#000000", "#666666", "#aaaaaa", "#FFFFFF", "#F44E3B", "#D33115", "#9F0500", "#FE9200", "#E27300", "#C45100", "#FCDC00", "#FCC400", "#FB9E00", "#DBDF00", "#B0BC00", "#808900", "#A4DD00", "#68BC00", "#194D33", "#68CCCA", "#16A5A5", "#0C797D", "#73D8FF", "#009CE0", "#0062B1", "#AEA1FF", "#7B64FF", "#653294", "#FDA1FF", "#FA28FF", "#AB149E"].map((c) => c.toLowerCase());
-    const currentColor = parseInt(colors[Math.floor(Math.random() * colors.length)].substring(1), 16);
-    const defaultAlpha = 0.2;
+    // const currentColor = parseInt(colors[Math.floor(Math.random() * colors.length)].substring(1), 16);
+    const currentColor = parseInt(colors[0].substring(1), 16);
+    const defaultAlpha = 0.25;
 
     this.state = {
       connected: false,
@@ -711,7 +712,7 @@ class App extends React.Component {
     this.setState({
       alpha: c.rgb.a,
     }, () => {
-      this.changeColor(c)
+      this.changeColor(c, c.rgb.a)
     });
   }
 
@@ -733,14 +734,16 @@ class App extends React.Component {
     });
   }
 
-  changeColor(c) {
+  changeColor(c, alpha) {
+    alpha = alpha || 1.0;
     const currentColor = c.rgb.r * 0x010000 + c.rgb.g * 0x000100 + c.rgb.b;
-    c.hex = intToColorWithAlpha(currentColor, this.state.alpha);
-    c.rgb.a = this.state.alpha;
-    c.hsl.a = this.state.alpha;
-    c.hsv.a = this.state.alpha;
+    c.hex = intToColorWithAlpha(currentColor, alpha);
+    c.rgb.a = alpha;
+    c.hsl.a = alpha;
+    c.hsv.a = alpha;
     this.setState({
       pickerColor: c,
+      alpha,
       currentColor,
     }, () => {
       this.renderCanvas();
