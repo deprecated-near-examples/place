@@ -86,8 +86,12 @@ h2 {
 }
 
 
+.header {
+  padding: 16px 16px 0px 16px;
+}
+
 .container {
-  padding: 16px;
+  padding: 0px 16px;
   display: flex;
   justify-content: center;
 }
@@ -105,7 +109,8 @@ h2 {
 }
 
 .leaderboard {
-  max-width: 400px;
+  max-width: 380px;
+  font-size: 0.9em;
   a {
     color: inherit;
     text-decoration: none;
@@ -115,7 +120,7 @@ h2 {
     }
   }
   tr {
-    height: 32px;
+    height: 1em;
     display: inline-table;
     width: 100%;
     border-bottom: 1px solid #ddd;
@@ -142,7 +147,7 @@ h2 {
 
 @mixin block {
   width: 100%;
-  max-width: 800px;
+  max-width: 600px;
   margin-bottom: 16px;
 }
 
@@ -177,7 +182,9 @@ h2 {
     box-shadow: none !important;
     padding: 0 !important;
     border: none !important;
-    @include block;
+    margin-bottom: 16px;
+    width: 100%;
+    max-width: 800px;
   }
 }
 
@@ -197,7 +204,7 @@ h2 {
     background-position: 0px 0;
   }
   100% {
-    background-position: 0 800px;
+    background-position: 0 600px;
   }
 }
 
@@ -223,17 +230,17 @@ h2 {
 Layout For Tablet / Phone
 ********************************/
 
-@media (max-width: 1200px) {
+@media (max-width: 1000px) {
   .row {
     flex-direction: column;
-    max-width: 800px;
+    max-width: 600px;
     div {
       padding-left: 0 !important;
     }
   }
 }
 
-@media (max-width: 800px) {
+@media (max-width: 600px) {
   .pixel-board {
     width: 100vw;
     margin-left: -16px;

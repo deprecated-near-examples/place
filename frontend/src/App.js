@@ -36,8 +36,8 @@ const BoardHeight = 50;
 const BoardWidth = 50;
 const NumLinesPerFetch = 10;
 const ExpectedLineLength = 4 + 8 * BoardWidth;
-const CellWidth = 16;
-const CellHeight = 16;
+const CellWidth = 12;
+const CellHeight = 12;
 const MaxNumColors = 31;
 const BatchOfPixels = 100;
 // 500 ms
@@ -291,7 +291,8 @@ class App extends React.Component {
 
     this.setState({
       currentColor: color,
-      pickerColor: intToColorWithAlpha(color, this.state.alpha),
+      alpha: 1,
+      pickerColor: intToColorWithAlpha(color, 1),
       gammaColors: generateGamma(int2hsv(color)[0]),
       pickingColor: false,
     }, () => {
@@ -865,37 +866,31 @@ class App extends React.Component {
     ) : "";
     return (
       <div>
+        <div class="header">
+          <h2>{Avocado} Berry Club {Banana}</h2>{' '}
+          <a
+            className="btn btn-outline-none"
+            href="https://farm.berryclub.io">Berry Farm {Cucumber}
+          </a>
+          <a
+            className="btn btn-outline-none"
+            href="https://bananaswap.berryclub.io">[BETA] Banana Swap {Banana}
+          </a>
+          {content}
+        </div>
         <div className="container">
           <div className="row">
             <div>
-              <h2>{Avocado} Berry Club {Banana}</h2>{' '}
-              <a
-                className="btn btn-outline-none"
-                href="https://farm.berryclub.io">Berry Farm {Cucumber}
-              </a>
-              <a
-                className="btn btn-outline-none"
-                href="https://bananaswap.berryclub.io">[BETA] Banana Swap {Banana}
-              </a>
-              {content}
               <div>
-                {this.state.signedIn ? (<div>
-                  Draw here - one {Avocado} per pixel. Hold <span className="badge badge-secondary">ALT</span> key to pick a color from board.{' '}
-                  <button
-                    className="btn btn-outline-secondary"
-                    onClick={() => this.state.pickingColor ? this.disablePickColor() : this.enablePickColor() }>{ this.state.pickingColor ? 'Cancel' : 'Color Picker'}
-                  </button>
-                </div>) : ""}
                 <canvas ref={this.canvasRef}
-                        width={800}
-                        height={800}
+                        width={600}
+                        height={600}
                         className={this.state.boardLoaded ? "pixel-board" : "pixel-board c-animated-background"}>
 
                 </canvas>
               </div>
             </div>
             <div className="leaderboard">
-              <h2>Leaderboard</h2>
               <div>
                 <Leaderboard
                   owners={this.state.owners}
