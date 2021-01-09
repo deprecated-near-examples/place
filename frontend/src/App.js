@@ -153,6 +153,7 @@ class App extends React.Component {
         connected: true,
         signedIn: !!this._accountId,
         accountId: this._accountId,
+        ircAccountId: this._accountId.replace('.', '_')
       });
     });
   }
@@ -904,6 +905,11 @@ class App extends React.Component {
           </div>
         </div>
         <div className="padded">
+          {this.state.signedIn ? (<div>
+            <iframe title="irc" className="irc" frameBorder="0" src={`https://kiwiirc.com/client/irc.kiwiirc.com/?nick=${this.state.ircAccountId}#berryclub`} ></iframe>
+          </div>) : ""}
+        </div>
+        <div className="padded">
           <div className="video-container">
             <iframe title="youtube" className="youtube" src="https://www.youtube.com/embed/lMSWhCwstLo" frameBorder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -911,6 +917,7 @@ class App extends React.Component {
           </div>
           <div></div>
         </div>
+        <div></div>
         {weapons}
         <a className="github-fork-ribbon right-bottom fixed" href="https://github.com/evgenykuzyakov/place" data-ribbon="Fork me on GitHub"
            title="Fork me on GitHub">Fork me on GitHub</a>
