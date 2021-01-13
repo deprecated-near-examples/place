@@ -917,6 +917,13 @@ class App extends React.Component {
           </div>
           <div></div>
         </div>
+        <div className="padded">
+          <div className="video-container">
+            <iframe title="youtube2" className="youtube" src="https://www.youtube.com/embed/PYF6RWd7ZgI" frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen></iframe>
+          </div>
+        </div>
         <div></div>
         {weapons}
         <a className="github-fork-ribbon right-bottom fixed" href="https://github.com/evgenykuzyakov/place" data-ribbon="Fork me on GitHub"
