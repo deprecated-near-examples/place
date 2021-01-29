@@ -8,7 +8,7 @@ import Switch from "react-switch"
 import {Weapons} from "./Weapons";
 
 const PixelPrice = new BN("10000000000000000000000");
-const IsMainnet = true;
+const IsMainnet = window.location.hostname === "berryclub.io";
 const TestNearConfig = {
   networkId: 'testnet',
   nodeUrl: 'https://rpc.testnet.near.org',
