@@ -13,8 +13,7 @@ const FARM_START_TIME: u64 = 1606019138008904777;
 const REWARD_PERIOD: u64 = 60 * 1_000_000_000;
 const PORTION_OF_REWARDS: Balance = 24 * 60;
 
-const FARM_CONTRACT_ID: &str = "farm.berryclub.ek.near";
-// const FARM_CONTRACT_ID: &str = "dev-1605908677227-6741841";
+const FARM_CONTRACT_ID_PREFIX: &str = "farm";
 
 pub mod account;
 pub use crate::account::*;
@@ -22,7 +21,15 @@ pub use crate::account::*;
 pub mod board;
 pub use crate::board::*;
 
+mod fungible_token_core;
+mod fungible_token_metadata;
+mod internal;
 pub mod token;
+
+pub use crate::fungible_token_core::*;
+pub use crate::fungible_token_metadata::*;
+use crate::internal::*;
+
 pub use crate::token::*;
 
 #[global_allocator]
@@ -169,7 +176,12 @@ impl Place {
         self.last_reward_timestamp = current_time;
         let reward: Balance = self.get_expected_reward().into();
         env::log(format!("Distributed reward of {}", reward).as_bytes());
-        Promise::new(FARM_CONTRACT_ID.to_string()).function_call(
+        Promise::new(format!(
+            "{}.{}",
+            FARM_CONTRACT_ID_PREFIX,
+            env::current_account_id()
+        ))
+        .function_call(
             b"take_my_near".to_vec(),
             b"{}".to_vec(),
             reward,

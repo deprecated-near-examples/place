@@ -52,7 +52,7 @@ pub struct SetPixelRequest {
 impl SetPixelRequest {
     pub fn assert_valid(&self) {
         assert!(self.x < BOARD_WIDTH, "X is out of bounds");
-        assert!(self.x < BOARD_HEIGHT, "Y is out of bounds");
+        assert!(self.y < BOARD_HEIGHT, "Y is out of bounds");
         assert!(self.color <= 0xffffff, "Color is out of bounds");
     }
 }

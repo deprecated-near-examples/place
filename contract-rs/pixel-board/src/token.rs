@@ -180,9 +180,7 @@ impl VaultFungibleToken for Place {
     }
 
     fn resolve_vault(&mut self, vault_id: VaultId, sender_id: AccountId) -> U128 {
-        if env::current_account_id() != env::predecessor_account_id() {
-            env::panic(b"This method is private");
-        }
+        assert_self();
 
         let vault = self.vaults.remove(&vault_id).expect("Vault doesn't exist");
 
