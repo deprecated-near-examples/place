@@ -1,6 +1,6 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::{UnorderedMap, Vector};
-use near_sdk::{env, near_bindgen, AccountId, Balance};
+use near_sdk::{env, near_bindgen, AccountId, Balance, PanicOnDefault};
 
 pub mod account;
 pub use crate::account::*;
@@ -12,17 +12,11 @@ pub use crate::board::*;
 static ALLOC: near_sdk::wee_alloc::WeeAlloc<'_> = near_sdk::wee_alloc::WeeAlloc::INIT;
 
 #[near_bindgen]
-#[derive(BorshDeserialize, BorshSerialize)]
+#[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 pub struct Place {
     pub account_indices: UnorderedMap<AccountId, u32>,
     pub board: board::PixelBoard,
     pub accounts: Vector<Account>,
-}
-
-impl Default for Place {
-    fn default() -> Self {
-        panic!("Fun token should be initialized before usage")
-    }
 }
 
 #[near_bindgen]
